@@ -151,6 +151,8 @@ datas* get_jmp_address(int v1) {
     fstream fin1("F:\\x64dbg_2021_03_12\\release\\x64\\plugins\\offset_jmp.json", ios::in);
     string json_text;
     getline(fin1, json_text); // 读取jmp指令存放的Json文件
+    fin1.clear();
+    fin1.close(); // 释放文件指针内存
 
     Json::Value value_json;
     Json::Reader reader_json;
