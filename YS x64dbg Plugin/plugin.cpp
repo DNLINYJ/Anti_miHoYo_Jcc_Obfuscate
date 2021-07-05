@@ -4,8 +4,7 @@
 #include <string>
 #include <iostream> 
 #include <fstream>
-#include <process.h>
-#include <windows.h>
+#include <pthread.h>
 using namespace std;
 
 enum
@@ -54,9 +53,8 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
         }
         MessageBoxA(hwndDlg, "[原神反混淆插件] 开始反混淆.", PLUGIN_NAME, MB_ICONINFORMATION);
         GuiAddLogMessage(u8"[原神反混淆插件] 开始反混淆.\n");
-        HANDLE hThread;
-        hThread = (HANDLE)_beginthreadex(NULL, 0, (_beginthreadex_proc_type)SetBreakpoint_And_Fuck_JMP, NULL, 0, NULL); // 使用多线程启动JMP反混淆,避免X64DBG卡死（假无响应）
-        //GuiAddLogMessage(u8"[原神反混淆插件] 开始反混淆.");
+        pthread_t tids[2]; // 定义线程的 id 变量，多个变量使用数组
+        pthread_create(&tids[0], NULL, SetBreakpoint_And_Fuck_JMP, NULL); // 使用多线程启动JMP反混淆,避免X64DBG卡死（假无响应）
         break;
     default:
         break;
@@ -89,8 +87,8 @@ void get_obfuscated_address_offset()
                 v2 += 1;
             }
             if (v2 > 5) { //当一个地址出现5次以上时，认为被断点阻断或发生故障
-                v2 = 0; 
-                duint uiAddr = 0; 
+                v2 = 0;
+                duint uiAddr = 0;
                 duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
                 uiAddr = sel.start; //获取当前jmp地址
                 DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp命令
@@ -112,56 +110,52 @@ void get_obfuscated_address_offset()
                         _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
                     }
                     else {
-                        _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n",result.c_str()); //打印日志
+                        _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
                     }
-                }           
+                }
             }
-
         }
     }
 }
 
-void static SetBreakpoint_And_Fuck_JMP() {
-    int v1 = 0;
+void *SetBreakpoint_And_Fuck_JMP(void* args) {
+    int v1 = 1;
     duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-    while (v1 <= 15214) {
+    while (15214 - v1) {
         datas* temp = new datas;
         temp = get_jmp_address(v1); // 获取jmp指令地址
+        v1++;
         string command = "bp " + DecIntToHexStr(temp->offset + base_address);  
         bool result = DbgCmdExecDirect(command.c_str()); // 使用 bp+地址 的形式下断点
         
         string temp_string;
         temp_string = DecIntToHexStr(temp->offset + base_address);
         if (result == true) {  //设置断点成功
-            string info = u8"[原神反混淆插件] 成功设置jmp断点在地址: " + temp_string + "\n";
+            string info = u8"[原神反混淆插件] 成功设置jmp断点在地址: " + temp_string + u8"\n";
             GuiAddLogMessage(info.c_str());
         }
         else {
             string info = u8"[原神反混淆插件] 设置jmp断点在地址: " + temp_string + u8" 失败.\n";
             GuiAddLogMessage(info.c_str());
+            v1 = 15214;
         }
-        v1 += 1;
     }
-
-    GuiAddLogMessage(u8"[原神反混淆插件] 下jmp断点完毕.");
-    get_obfuscated_address_offset();
+    GuiAddLogMessage(u8"[原神反混淆插件] 设置jmp断点成功.\n");
 }
 
 datas* get_jmp_address(int v1) {
     fstream fin1("F:\\x64dbg_2021_03_12\\release\\x64\\plugins\\offset_jmp.json", ios::in);
     string json_text;
     getline(fin1, json_text); // 读取jmp指令存放的Json文件
-    fin1.clear();
-    fin1.close(); // 释放文件指针内存
 
     Json::Value value_json;
     Json::Reader reader_json;
     reader_json.parse(json_text.c_str(), value_json);
     datas* jmp_address_dict = new datas;
-    string jmp_address_string = value_json[v1]["address"].asCString();
+    string jmp_address_string = value_json[v1 - 1]["address"].asCString();
     jmp_address_dict->address = jmp_address_string; // 读取jmp指令在IDA内的地址
 
-    string temp_string = value_json[v1]["offset"].asCString();
+    string temp_string = value_json[v1 - 1]["offset"].asCString();
     long long temp_long = strtol(temp_string.c_str(), 0, 16);
     duint temp_offset = static_cast<duint>(temp_long); // 获取jmp指令偏移量
 

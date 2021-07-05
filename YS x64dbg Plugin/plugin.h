@@ -11,6 +11,6 @@
 bool pluginInit(PLUG_INITSTRUCT* initStruct);
 bool pluginStop();
 void pluginSetup();
-void static SetBreakpoint_And_Fuck_JMP();
+void *SetBreakpoint_And_Fuck_JMP(void*); // 为了多线程才改成void指针
 std::string DecIntToHexStr(long long num);
 void get_obfuscated_address_offset();
