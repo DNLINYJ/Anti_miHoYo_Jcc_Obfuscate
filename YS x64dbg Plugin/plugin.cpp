@@ -103,7 +103,7 @@ void get_obfuscated_address_offset()
                     _plugin_logprintf(u8"[原神反混淆插件] jmp指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
                     string temp_offset = DecIntToHexStr(uiAddr - base_address);
-                    string post_data = "{'offset':'" + temp_offset + "','jmp_offset':'" + DecIntToHexStr(jmp_address - base_address) + "'}"; // {'offset':jmp指令的偏移量, 'jmp_offset':jmp指令跳转的地址偏移量}
+                    string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
                     string result = post_web("http://127.0.0.1:50000/jmp_address", post_data); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
 
                     if (result == "OK") {
@@ -119,9 +119,9 @@ void get_obfuscated_address_offset()
 }
 
 void *SetBreakpoint_And_Fuck_JMP(void* args) {
-    int v1 = 1;
+    int v1 = 0;
     duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-    while (15214 - v1) {
+    while (1000 - v1) {  // 等同于 while (v1 != 15214)
         datas* temp = new datas;
         temp = get_jmp_address(v1); // 获取jmp指令地址
         v1++;
@@ -137,10 +137,11 @@ void *SetBreakpoint_And_Fuck_JMP(void* args) {
         else {
             string info = u8"[原神反混淆插件] 设置jmp断点在地址: " + temp_string + u8" 失败.\n";
             GuiAddLogMessage(info.c_str());
-            v1 = 15214;
+            v1 = 1000;
         }
     }
     GuiAddLogMessage(u8"[原神反混淆插件] 设置jmp断点成功.\n");
+    get_obfuscated_address_offset();
 }
 
 datas* get_jmp_address(int v1) {
@@ -153,10 +154,10 @@ datas* get_jmp_address(int v1) {
     Json::Reader reader_json;
     reader_json.parse(json_text.c_str(), value_json);
     datas* jmp_address_dict = new datas;
-    string jmp_address_string = value_json[v1 - 1]["address"].asCString();
+    string jmp_address_string = value_json[v1]["address"].asCString();
     jmp_address_dict->address = jmp_address_string; // 读取jmp指令在IDA内的地址
 
-    string temp_string = value_json[v1 - 1]["offset"].asCString();
+    string temp_string = value_json[v1]["offset"].asCString();
     long long temp_long = strtol(temp_string.c_str(), 0, 16);
     duint temp_offset = static_cast<duint>(temp_long); // 获取jmp指令偏移量
 
