@@ -134,6 +134,7 @@ void get_obfuscated_address_offset()
                     else {
                         _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
                     }
+                    DbgCmdExecDirect("run"); // 让程序继续运行
                 }
             }
         }
