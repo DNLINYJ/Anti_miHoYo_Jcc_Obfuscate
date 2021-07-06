@@ -79,7 +79,6 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 
 void get_obfuscated_address_offset()
 {
-    Sleep(30000);
     if (!DbgIsDebugging())
     {
         GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
@@ -117,8 +116,10 @@ void get_obfuscated_address_offset()
                     _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
                     string temp_offset = DecIntToHexStr(uiAddr - base_address);
-                    string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
-                    string result = post_web("http://127.0.0.1:50000/jmp_address", post_data); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
+                    string url = "http://127.0.0.1:50000/jmp_address?offset=" + temp_offset + "&jmp_offset=" + DecIntToHexStr(jmp_address - base_address); //改用GET协议进行数据传输
+                    _plugin_logprintf(u8"[原神反混淆插件] [Debug] URL:",url);
+                    //string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
+                    string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
 
                     if (result == "OK") {
                         _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
