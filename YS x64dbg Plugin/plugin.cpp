@@ -140,6 +140,9 @@ void get_obfuscated_address_offset()
                     }
                     DbgCmdExecDirect("run"); // 让程序继续运行
                 }
+                else {
+                    DbgCmdExecDirect("run"); // 让程序继续运行
+                }
             }
         }
     }
