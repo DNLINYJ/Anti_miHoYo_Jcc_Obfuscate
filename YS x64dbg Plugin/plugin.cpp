@@ -99,18 +99,19 @@ void get_obfuscated_address_offset()
             if (sel.start == first_address) { //当当前地址于第一次记录的地址相同时，v2（地址出现次数）加1
                 v2 += 1;
             }
-            if (v2 > 5) { //当一个地址出现5次以上时，认为被断点阻断或发生故障
+            if (v2 > 3) { //当一个地址出现3次以上时，认为被断点阻断或发生故障
                 v2 = 0;
                 duint uiAddr = 0;
                 duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
                 uiAddr = sel.start; //获取当前jmp地址
-                char* module_name = new char[256];
-                bool ret = DbgGetModuleAt(uiAddr, module_name);
-                string module_name_str = module_name;
+                //char* module_name = new char[256];
+                //bool ret = DbgGetModuleAt(uiAddr, module_name);
+                //string module_name_str = module_name;
                 //_plugin_logprintf(module_name_str.c_str());
-                if (module_name_str != "unityplayer") {
-                    continue;
-                }
+                //if (module_name_str != "unityplayer") {
+                //    delete[] module_name; 
+                //    continue;
+                //}
                 DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp指令
 
                 string temp_s = basicinfo.instruction;
@@ -130,10 +131,16 @@ void get_obfuscated_address_offset()
 
                     if (result == "OK") {
                         _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
+                        string command = "bpd " + DecIntToHexStr(uiAddr);
+                        bool result = DbgCmdExecDirect(command.c_str()); // 使用 bpd+地址 的形式禁用断点 
+                                                                         // 假设此jmp只跳往一个地址
                     }
                     else {
                         _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
                     }
+                    DbgCmdExecDirect("run"); // 让程序继续运行
+                }
+                else {
                     DbgCmdExecDirect("run"); // 让程序继续运行
                 }
             }
