@@ -9,7 +9,8 @@ using namespace std;
 
 enum
 {
-    MENU_TEST
+    MENU_TEST,
+    MENU_SEE
 };
 
 struct datas
@@ -38,7 +39,8 @@ bool pluginStop()
 void pluginSetup()
 {
 	//往插件菜单里面添加两个菜单项，菜单ID分别是1，2。
-	_plugin_menuaddentry(hMenu, MENU_TEST, u8"获取混淆地址偏移量");
+	_plugin_menuaddentry(hMenu, MENU_TEST, u8"在JMP指令地址设置断点");
+    _plugin_menuaddentry(hMenu, MENU_SEE, u8"开始监视JMP指令断点");
 }
 
 PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
@@ -51,10 +53,21 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
             GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
             break;
         }
-        MessageBoxA(hwndDlg, "[原神反混淆插件] 开始反混淆.", PLUGIN_NAME, MB_ICONINFORMATION);
-        GuiAddLogMessage(u8"[原神反混淆插件] 开始反混淆.\n");
-        pthread_t tids[2]; // 定义线程的 id 变量，多个变量使用数组
-        pthread_create(&tids[0], NULL, SetBreakpoint_And_Fuck_JMP, NULL); // 使用多线程启动JMP反混淆,避免X64DBG卡死（假无响应）
+        MessageBoxA(hwndDlg, "[原神反混淆插件] 开始在JMP指令地址设置断点.", PLUGIN_NAME, MB_ICONINFORMATION);
+        GuiAddLogMessage(u8"[原神反混淆插件] 开始在JMP指令地址设置断点.\n");
+        pthread_t tids; // 定义线程的 id 变量，多个变量使用数组
+        pthread_create(&tids, NULL, SetBreakpoint_And_Fuck_JMP, NULL); // 使用多线程启动JMP指令地址设置断点线程,避免X64DBG卡死（假无响应）
+        break;
+    case MENU_SEE:
+        if (!DbgIsDebugging())
+        {
+            GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
+            break;
+        }
+        MessageBoxA(hwndDlg, "[原神反混淆插件] 开始监视JMP指令断点.", PLUGIN_NAME, MB_ICONINFORMATION);
+        GuiAddLogMessage(u8"[原神反混淆插件] 开始监视JMP指令断点.\n");
+        pthread_t tids_start; // 定义线程的 id 变量，多个变量使用数组
+        pthread_create(&tids_start, NULL, (void* (__cdecl*)(void*))get_obfuscated_address_offset, NULL); // 使用多线程启动监视进程,避免X64DBG卡死（假无响应）
         break;
     default:
         break;
@@ -66,6 +79,7 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 
 void get_obfuscated_address_offset()
 {
+    Sleep(30000);
     if (!DbgIsDebugging())
     {
         GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
@@ -100,7 +114,7 @@ void get_obfuscated_address_offset()
 
                     temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
                     duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
-                    _plugin_logprintf(u8"[原神反混淆插件] jmp指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
+                    _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
                     string temp_offset = DecIntToHexStr(uiAddr - base_address);
                     string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
@@ -121,7 +135,7 @@ void get_obfuscated_address_offset()
 void *SetBreakpoint_And_Fuck_JMP(void* args) {
     int v1 = 0;
     duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-    while (1000 - v1) {  // 等同于 while (v1 != 15214)
+    while (999 - v1) {  // 等同于 while (v1 != 15214)
         datas* temp = new datas;
         temp = get_jmp_address(v1); // 获取jmp指令地址
         v1++;
@@ -131,17 +145,15 @@ void *SetBreakpoint_And_Fuck_JMP(void* args) {
         string temp_string;
         temp_string = DecIntToHexStr(temp->offset + base_address);
         if (result == true) {  //设置断点成功
-            string info = u8"[原神反混淆插件] 成功设置jmp断点在地址: " + temp_string + u8"\n";
+            string info = u8"[原神反混淆插件] 成功设置JMP指令断点在地址: " + temp_string + u8"\n";
             GuiAddLogMessage(info.c_str());
         }
         else {
-            string info = u8"[原神反混淆插件] 设置jmp断点在地址: " + temp_string + u8" 失败.\n";
+            string info = u8"[原神反混淆插件] 设置JMP指令断点在地址: " + temp_string + u8" 失败.\n";
             GuiAddLogMessage(info.c_str());
-            v1 = 1000;
         }
     }
-    GuiAddLogMessage(u8"[原神反混淆插件] 设置jmp断点成功.\n");
-    get_obfuscated_address_offset();
+    GuiAddLogMessage(u8"[原神反混淆插件] 设置JMP指令地址断点成功.\n");
 }
 
 datas* get_jmp_address(int v1) {
