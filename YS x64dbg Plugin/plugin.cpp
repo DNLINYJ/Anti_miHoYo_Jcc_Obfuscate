@@ -104,7 +104,14 @@ void get_obfuscated_address_offset()
                 duint uiAddr = 0;
                 duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
                 uiAddr = sel.start; //获取当前jmp地址
-                DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp命令
+                char* module_name = new char[256];
+                bool ret = DbgGetModuleAt(uiAddr, module_name);
+                string module_name_str = module_name;
+                //_plugin_logprintf(module_name_str.c_str());
+                if (module_name_str != "unityplayer") {
+                    continue;
+                }
+                DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp指令
 
                 string temp_s = basicinfo.instruction;
                 string::size_type idx = temp_s.find("jmp"); //检测当前指令是否为jmp指令，避免程序发生故障所导致的阻断
@@ -117,7 +124,7 @@ void get_obfuscated_address_offset()
 
                     string temp_offset = DecIntToHexStr(uiAddr - base_address);
                     string url = "http://127.0.0.1:50000/jmp_address?offset=" + temp_offset + "&jmp_offset=" + DecIntToHexStr(jmp_address - base_address); //改用GET协议进行数据传输
-                    _plugin_logprintf(u8"[原神反混淆插件] [Debug] URL:",url);
+                    //_plugin_logprintf(u8"[原神反混淆插件] [Debug] URL:",url);
                     //string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
                     string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
 
