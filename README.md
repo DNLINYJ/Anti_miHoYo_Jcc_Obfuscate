@@ -1,5 +1,7 @@
 # 原神1.4.51 反JMP(基本块分割) X64DBG 插件
 
+原神1.4.51 反JMP(基本块分割) X64DBG 插件
+
 > 函数功能
 
 > void get_obfuscated_address_offset() // 获取JMP指令跳转的地址并将跳转地址的偏移量发送至Python WEB服务器
