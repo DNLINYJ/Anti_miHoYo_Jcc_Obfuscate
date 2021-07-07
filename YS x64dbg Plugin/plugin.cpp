@@ -10,7 +10,8 @@ using namespace std;
 enum
 {
     MENU_TEST,
-    MENU_SEE
+    MENU_SEE,
+    MENU_DELETE
 };
 
 struct datas
@@ -38,9 +39,10 @@ bool pluginStop()
 //Do GUI/Menu related things here. 在这里做 GUI/Menu 相关的事情。
 void pluginSetup()
 {
-	//往插件菜单里面添加两个菜单项，菜单ID分别是1，2。
+	//往插件菜单里面添加三个菜单项
 	_plugin_menuaddentry(hMenu, MENU_TEST, u8"在JMP指令地址设置断点");
     _plugin_menuaddentry(hMenu, MENU_SEE, u8"开始监视JMP指令断点");
+    _plugin_menuaddentry(hMenu, MENU_DELETE, u8"删除所有断点");
 }
 
 PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
@@ -55,7 +57,7 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
         }
         MessageBoxA(hwndDlg, "[原神反混淆插件] 开始在JMP指令地址设置断点.", PLUGIN_NAME, MB_ICONINFORMATION);
         GuiAddLogMessage(u8"[原神反混淆插件] 开始在JMP指令地址设置断点.\n");
-        pthread_t tids; // 定义线程的 id 变量，多个变量使用数组
+        pthread_t tids; // 定义线程的 id 变量
         pthread_create(&tids, NULL, SetBreakpoint_And_Fuck_JMP, NULL); // 使用多线程启动JMP指令地址设置断点线程,避免X64DBG卡死（假无响应）
         break;
     case MENU_SEE:
@@ -66,8 +68,19 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
         }
         MessageBoxA(hwndDlg, "[原神反混淆插件] 开始监视JMP指令断点.", PLUGIN_NAME, MB_ICONINFORMATION);
         GuiAddLogMessage(u8"[原神反混淆插件] 开始监视JMP指令断点.\n");
-        pthread_t tids_start; // 定义线程的 id 变量，多个变量使用数组
+        pthread_t tids_start; // 定义线程的 id 变量
         pthread_create(&tids_start, NULL, (void* (__cdecl*)(void*))get_obfuscated_address_offset, NULL); // 使用多线程启动监视进程,避免X64DBG卡死（假无响应）
+        break;
+    case MENU_DELETE:
+        if (!DbgIsDebugging())
+        {
+            GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
+            break;
+        }
+        MessageBoxA(hwndDlg, "[原神反混淆插件] 开始删除所有断点.", PLUGIN_NAME, MB_ICONINFORMATION);
+        GuiAddLogMessage(u8"[原神反混淆插件] 开始删除所有断点.\n");
+        pthread_t tids_delete; // 定义线程的 id 变量
+        pthread_create(&tids_delete, NULL, (void* (__cdecl*)(void*))detele_all_breakpoints, NULL); // 使用多线程启动监视进程,避免X64DBG卡死（假无响应）
         break;
     default:
         break;
@@ -106,6 +119,7 @@ void get_obfuscated_address_offset()
                 uiAddr = sel.start; //获取当前jmp地址
 
                 if (!check_now_module(uiAddr)) {
+                    DbgCmdExecDirect("run"); // 让程序继续运行
                     continue;
                 }
 
@@ -126,14 +140,13 @@ void get_obfuscated_address_offset()
 
                     if (result == "OK") {
                         _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
-                        string command = "bpd " + DecIntToHexStr(uiAddr);
-                        bool result = DbgCmdExecDirect(command.c_str()); // 使用 bpd+地址 的形式禁用断点 
-                                                                         // 假设此jmp只跳往一个地址
+                        // jmp有时会跳转到其他的地址（跳转地址不唯一），所以匹配到断点后不能禁用断点
+                        DbgCmdExecDirect("run"); // 让程序继续运行
                     }
                     else {
                         _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
+                        DbgCmdExecDirect("run"); // 让程序继续运行
                     }
-                    DbgCmdExecDirect("run"); // 让程序继续运行
                 }
                 else {
                     DbgCmdExecDirect("run"); // 让程序继续运行
@@ -146,7 +159,7 @@ void get_obfuscated_address_offset()
 void *SetBreakpoint_And_Fuck_JMP(void* args) {
     int v1 = 0;
     duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-    while (999 - v1) {  // 等同于 while (v1 != 15214)
+    while (1000 - v1) {  // 等同于 while (v1 != 15214)
         datas* temp = new datas;
         temp = get_jmp_address(v1); // 获取jmp指令地址
         v1++;
@@ -165,6 +178,31 @@ void *SetBreakpoint_And_Fuck_JMP(void* args) {
         }
     }
     GuiAddLogMessage(u8"[原神反混淆插件] 设置JMP指令地址断点成功.\n");
+    pthread_exit(NULL); // 退出线程，避免占用资源
+}
+
+void detele_all_breakpoints() {
+    BPMAP* bp_list = new BPMAP;
+    DbgGetBpList(bp_normal, bp_list);
+    BRIDGEBP* bridgeList = bp_list->bp;
+    int v1 = bp_list->count;
+    while (v1) {
+        string command = "bpc " + DecIntToHexStr(bridgeList->addr);
+        bool result = DbgCmdExecDirect(command.c_str()); // 使用 bpc+地址 的形式删除断点
+        if (result == true) {
+            string address = DecIntToHexStr(bridgeList->addr);
+            _plugin_logprintf(u8"[原神反混淆插件] 成功删除在地址:%s 的断点\n", address.c_str());
+        }
+        else {
+            string address = DecIntToHexStr(bridgeList->addr);
+            _plugin_logprintf(u8"[原神反混淆插件] 删除在地址:%s 的断点失败\n", address.c_str());
+        }
+        v1--;
+        bridgeList++;
+        //GetBpList(bp_list);
+    }
+    GuiAddLogMessage(u8"[原神反混淆插件] 删除所有断点成功.\n");
+    pthread_exit(NULL); // 退出线程，避免占用资源
 }
 
 datas* get_jmp_address(int v1) {
@@ -191,7 +229,7 @@ datas* get_jmp_address(int v1) {
 }
 
 string get_jmp_offset_file_path() {
-    return get_web("http://127.0.0.1/jmp_offset_file_path");
+    return get_web("http://127.0.0.1:50000/jmp_offset_file_path");
 }
 
 bool check_now_module(duint address) {

@@ -16,3 +16,4 @@ std::string DecIntToHexStr(long long num);
 void get_obfuscated_address_offset();
 bool check_now_module(duint address);
 std::string get_jmp_offset_file_path();
+void detele_all_breakpoints();
