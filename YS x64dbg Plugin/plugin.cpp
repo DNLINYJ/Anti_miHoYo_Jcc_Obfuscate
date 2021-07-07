@@ -173,7 +173,7 @@ void *SetBreakpoint_And_Fuck_JMP(void* args) {
 }
 
 datas* get_jmp_address(int v1) {
-    fstream fin1("F:\\x64dbg_2021_03_12\\release\\x64\\plugins\\offset_jmp.json", ios::in);
+    fstream fin1(get_jmp_offset_file_path().c_str(), ios::in);
     string json_text;
     getline(fin1, json_text); // 读取jmp指令存放的Json文件
     fin1.close();
@@ -193,6 +193,10 @@ datas* get_jmp_address(int v1) {
     jmp_address_dict->jmp_address = 0;
 
     return jmp_address_dict;
+}
+
+string get_jmp_offset_file_path() {
+    return get_web("http://127.0.0.1/jmp_offset_file_path");
 }
 
 // 将10进制字符串转为16进制字符串 来源：https://blog.csdn.net/u014602230/article/details/52752683/
