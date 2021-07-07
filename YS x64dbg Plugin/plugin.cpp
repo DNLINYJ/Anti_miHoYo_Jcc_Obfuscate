@@ -104,14 +104,11 @@ void get_obfuscated_address_offset()
                 duint uiAddr = 0;
                 duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
                 uiAddr = sel.start; //获取当前jmp地址
-                //char* module_name = new char[256];
-                //bool ret = DbgGetModuleAt(uiAddr, module_name);
-                //string module_name_str = module_name;
-                //_plugin_logprintf(module_name_str.c_str());
-                //if (module_name_str != "unityplayer") {
-                //    delete[] module_name; 
-                //    continue;
-                //}
+
+                if (!check_now_module(uiAddr)) {
+                    continue;
+                }
+
                 DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp指令
 
                 string temp_s = basicinfo.instruction;
@@ -125,8 +122,6 @@ void get_obfuscated_address_offset()
 
                     string temp_offset = DecIntToHexStr(uiAddr - base_address);
                     string url = "http://127.0.0.1:50000/jmp_address?offset=" + temp_offset + "&jmp_offset=" + DecIntToHexStr(jmp_address - base_address); //改用GET协议进行数据传输
-                    //_plugin_logprintf(u8"[原神反混淆插件] [Debug] URL:",url);
-                    //string post_data = "{\"offset\":\"" + temp_offset + "\",\"jmp_offset\":\"" + DecIntToHexStr(jmp_address - base_address) + "\"}"; // {"offset":jmp指令的偏移量, "jmp_offset":jmp指令跳转的地址偏移量}
                     string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
 
                     if (result == "OK") {
@@ -197,6 +192,18 @@ datas* get_jmp_address(int v1) {
 
 string get_jmp_offset_file_path() {
     return get_web("http://127.0.0.1/jmp_offset_file_path");
+}
+
+bool check_now_module(duint address) {
+    char* module_name = new char[64];
+    bool ret = DbgGetModuleAt(address, module_name);
+    string module_name_str = module_name;
+    if (module_name_str != "unityplayer") {
+        return false;
+    }
+    else {
+        return true;
+    }
 }
 
 // 将10进制字符串转为16进制字符串 来源：https://blog.csdn.net/u014602230/article/details/52752683/
