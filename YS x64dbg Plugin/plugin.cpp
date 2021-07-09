@@ -101,6 +101,12 @@ void get_obfuscated_address_offset()
     {
         int v2 = 0;
         duint first_address = 0;
+        duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
+        string init_command_1 = "bp " + DecIntToHexStr(base_address + 0x158210); //StartDecrypt入口断点
+        string init_command_2 = "bp " + DecIntToHexStr(base_address + 0x158BFB); //StartDecrypt出口断点
+        DbgCmdExecDirect(init_command_1.c_str());
+        DbgCmdExecDirect(init_command_2.c_str());
+
         while (1)
         {
             BASIC_INSTRUCTION_INFO basicinfo;
@@ -115,132 +121,88 @@ void get_obfuscated_address_offset()
             if (v2 > 3) { //当一个地址出现3次以上时，认为被断点阻断或发生故障
                 v2 = 0;
                 duint uiAddr = 0;
-                duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-                uiAddr = sel.start; //获取当前jmp地址
+                GuiSelectionGet(GUI_DISASSEMBLY, &sel);
+                uiAddr = sel.start; //获取当前地址
 
-                if (!check_now_module(uiAddr)) {
-                    DbgCmdExecDirect("run"); // 让程序继续运行
-                    continue;
-                }
-
-                DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前jmp指令
+                DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前指令
 
                 string temp_s = basicinfo.instruction;
                 string::size_type idx = temp_s.find("jmp"); //检测当前指令是否为jmp指令，避免程序发生故障所导致的阻断
                 if (idx != string::npos) {  //指令为jmp指令
-                    _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
+                    string url = "http://127.0.0.1:50000/check_jmp_command?c=" + temp_s;
+                    string result = get_web(url);
 
-                    temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
-                    duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
-                    _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
+                    if (atof(result.c_str()) > 0.6) {
+                        if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
+                            _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
 
-                    string temp_offset = DecIntToHexStr(uiAddr - base_address);
-                    string url = "http://127.0.0.1:50000/jmp_address?offset=" + temp_offset + "&jmp_offset=" + DecIntToHexStr(jmp_address - base_address); //改用GET协议进行数据传输
-                    string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
+                            temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
+                            duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
+                            _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
-                    if (result == "OK") {
-                        _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
-                        // jmp有时会跳转到其他的地址（跳转地址不唯一），所以匹配到断点后不能禁用断点
-                        DbgCmdExecDirect("run"); // 让程序继续运行
-                    }
-                    else {
-                        _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
-                        DbgCmdExecDirect("run"); // 让程序继续运行
+                            string temp_offset = DecIntToHexStr(uiAddr - base_address);
+                            url = "http://127.0.0.1:50000/jmp_address?offset=" + temp_offset + "&jmp_offset=" + DecIntToHexStr(jmp_address - base_address); //改用GET协议进行数据传输
+                            string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
+
+                            if (result == "OK") {
+                                _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
+                                // jmp有时会跳转到其他的地址（跳转地址不唯一），所以匹配到断点后不能禁用断点
+                                DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                            }
+                            else {
+                                _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
+                                DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                            }
+                        }
+                        else {
+                            break;
+                        }
                     }
                 }
                 else {
-                    DbgCmdExecDirect("run"); // 让程序继续运行
+                    idx = temp_s.find("mov");
+                    if (idx != string::npos) {  //指令为mov指令
+                        string url = "http://127.0.0.1:50000/check_mov_command?c=" + temp_s;
+                        string result = get_web(url);
+
+                        if (atof(result.c_str()) > 0.7) {
+                            if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
+                                _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
+
+                                temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取mov指令使用的寄存器
+                                duint mov_address = DbgValFromString(temp_s.c_str());  // 获取mov指令地址
+
+                                url = "http://127.0.0.1:50000/jmp_address?offset=" + DecIntToHexStr(uiAddr - base_address) + "&mov_offset=" + DecIntToHexStr(mov_address); //改用GET协议进行数据传输
+                                string result = get_web(url); // 发送偏移量数据到本地WEB服务器，由Python脚本进一步处理
+
+                                if (result == "OK") {
+                                    _plugin_logprintf(u8"[原神反混淆插件] 成功将偏移量数据发送到本地WEB服务器.\n"); //打印日志
+                                    // jmp有时会跳转到其他的地址（跳转地址不唯一），所以匹配到断点后不能禁用断点
+                                    DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                                }
+                                else {
+                                    _plugin_logprintf(u8"[原神反混淆插件] 将偏移量数据发送到本地WEB服务器失败,WEB服务器回包: %s\n", result.c_str()); //打印日志
+                                    DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                                }
+                            }
+                            else {
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
+                            DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                        }
+                        else {
+                            break;
+                        }
+                    }
                 }
+            DbgCmdExecDirect("StepInto"); // 让程序单步运行
             }
         }
-    }
-}
-
-void *SetBreakpoint_And_Fuck_JMP(void* args) {
-    int v1 = 0;
-    duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
-    while (1000 - v1) {  // 等同于 while (v1 != 15214)
-        datas* temp = new datas;
-        temp = get_jmp_address(v1); // 获取jmp指令地址
-        v1++;
-        string command = "bp " + DecIntToHexStr(temp->offset + base_address);  
-        bool result = DbgCmdExecDirect(command.c_str()); // 使用 bp+地址 的形式下断点
-        
-        string temp_string;
-        temp_string = DecIntToHexStr(temp->offset + base_address);
-        if (result == true) {  //设置断点成功
-            string info = u8"[原神反混淆插件] 成功设置JMP指令断点在地址: " + temp_string + u8"\n";
-            GuiAddLogMessage(info.c_str());
-        }
-        else {
-            string info = u8"[原神反混淆插件] 设置JMP指令断点在地址: " + temp_string + u8" 失败.\n";
-            GuiAddLogMessage(info.c_str());
-        }
-    }
-    GuiAddLogMessage(u8"[原神反混淆插件] 设置JMP指令地址断点成功.\n");
-    pthread_exit(NULL); // 退出线程，避免占用资源
-}
-
-void detele_all_breakpoints() {
-    BPMAP* bp_list = new BPMAP;
-    DbgGetBpList(bp_normal, bp_list);
-    BRIDGEBP* bridgeList = bp_list->bp;
-    int v1 = bp_list->count;
-    while (v1) {
-        string command = "bpc " + DecIntToHexStr(bridgeList->addr);
-        bool result = DbgCmdExecDirect(command.c_str()); // 使用 bpc+地址 的形式删除断点
-        if (result == true) {
-            string address = DecIntToHexStr(bridgeList->addr);
-            _plugin_logprintf(u8"[原神反混淆插件] 成功删除在地址:%s 的断点\n", address.c_str());
-        }
-        else {
-            string address = DecIntToHexStr(bridgeList->addr);
-            _plugin_logprintf(u8"[原神反混淆插件] 删除在地址:%s 的断点失败\n", address.c_str());
-        }
-        v1--;
-        bridgeList++;
-        //GetBpList(bp_list);
-    }
-    GuiAddLogMessage(u8"[原神反混淆插件] 删除所有断点成功.\n");
-    pthread_exit(NULL); // 退出线程，避免占用资源
-}
-
-datas* get_jmp_address(int v1) {
-    fstream fin1(get_jmp_offset_file_path().c_str(), ios::in);
-    string json_text;
-    getline(fin1, json_text); // 读取jmp指令存放的Json文件
-    fin1.close();
-
-    Json::Value value_json;
-    Json::Reader reader_json;
-    reader_json.parse(json_text.c_str(), value_json);
-    datas* jmp_address_dict = new datas;
-    string jmp_address_string = value_json[v1]["address"].asCString();
-    jmp_address_dict->address = jmp_address_string; // 读取jmp指令在IDA内的地址
-
-    string temp_string = value_json[v1]["offset"].asCString();
-    long long temp_long = strtol(temp_string.c_str(), 0, 16);
-    duint temp_offset = static_cast<duint>(temp_long); // 获取jmp指令偏移量
-
-    jmp_address_dict->offset = temp_offset;
-    jmp_address_dict->jmp_address = 0;
-
-    return jmp_address_dict;
-}
-
-string get_jmp_offset_file_path() {
-    return get_web("http://127.0.0.1:50000/jmp_offset_file_path");
-}
-
-bool check_now_module(duint address) {
-    char* module_name = new char[64];
-    bool ret = DbgGetModuleAt(address, module_name);
-    string module_name_str = module_name;
-    if (module_name_str != "unityplayer") {
-        return false;
-    }
-    else {
-        return true;
+        _plugin_logprintf(u8"[原神反混淆插件] 完成.");
     }
 }
 
