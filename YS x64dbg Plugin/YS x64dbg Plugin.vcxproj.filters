@@ -281,9 +281,6 @@
     <ClInclude Include="pluginmain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GetWebIndex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="pluginsdk\x32bridge.lib">
@@ -346,9 +343,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pluginmain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GetWebIndex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
