@@ -68,11 +68,11 @@ void get_obfuscated_address_offset()
     {
         GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
     }
-        
-    else 
+
+    else
     {
-        int v2 = 0;
         duint first_address = 0;
+        duint uiAddr = 0;
         duint base_address = DbgModBaseFromName("unityplayer.dll"); //模块名转基址
         string init_command_1 = "bp " + DecIntToHexStr(base_address + 0x158210); //StartDecrypt入口断点
         string init_command_2 = "bp " + DecIntToHexStr(base_address + 0x158BFB); //StartDecrypt出口断点
@@ -80,120 +80,170 @@ void get_obfuscated_address_offset()
         DbgCmdExecDirect(init_command_2.c_str());
         Json::Value jmp_list;
         Json::Value mov_list;
-        Json::Value temp_list;
 
-        while (1)
-        {
+        while (true) {
+            if (!DbgIsDebugging())
+            {
+                GuiAddLogMessage(u8"[原神反混淆插件] 你需要处于调试状态才能使用此功能!\n");
+                break;
+            }
+            Sleep(10);
             BASIC_INSTRUCTION_INFO basicinfo;
             SELECTIONDATA sel;
             GuiSelectionGet(GUI_DISASSEMBLY, &sel); //获取指定 GUI 视图的当前选定行（或多行）并将信息作为起始地址和结束地址返回到 SELECTIONDATA 变量中。
-            if (v2 == 0) {  //当v2为0时，认为还没有记录地址或未被断点停止运行
-                first_address = sel.start;
+            uiAddr = sel.start; //获取当前地址
+
+            DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前指令
+
+            if (DecIntToHexStr(sel.start) == DecIntToHexStr(base_address + 0x158BFB)) {
+                break;
             }
-            if (sel.start == first_address) { //当当前地址于第一次记录的地址相同时，v2（地址出现次数）加1
-                v2 += 1;
+
+            char* module_name = new char[256];
+            bool ret = DbgGetModuleAt(uiAddr, module_name);
+            string module_name_str = module_name;
+            //_plugin_logprintf(module_name_str.c_str());
+            if (module_name_str != "unityplayer") {
+                DbgCmdExecDirect("StepInto");
+                continue;
             }
-            if (v2 > 2) { //当一个地址出现2次以上时，认为被断点阻断或发生故障
-                v2 = 0;
-                duint uiAddr = 0;
-                GuiSelectionGet(GUI_DISASSEMBLY, &sel);
-                uiAddr = sel.start; //获取当前地址
 
-                DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前指令
+            bool mov_status = is_mov_instruction(basicinfo.instruction);
 
-                string temp_s = basicinfo.instruction;
-                string::size_type idx = temp_s.find("jmp"); //检测当前指令是否为jmp指令，避免程序发生故障所导致的阻断
-                if (idx != string::npos) {  //指令为jmp指令
+            if (mov_status) {
+                _plugin_logprintf(u8"%s\n", basicinfo.instruction);
+                if (mov_list.isMember(DecIntToHexStr(uiAddr)) == false) { // 获取rxx内容
+                    //迭代器声明
+                    string str = basicinfo.instruction;
+                    smatch result;
+                    string::const_iterator iterStart = str.begin();
+                    string::const_iterator iterEnd = str.end();
+                    regex pattern("\\+r\\w\\w");
+                    regex_search(iterStart, iterEnd, result, pattern);
+                    string register_ = result[0];
+                    mov_list[DecIntToHexStr(uiAddr)] = DecIntToHexStr(DbgValFromString(register_.replace(register_.begin(), register_.begin() + 1, "").c_str()));
+                    string temp_temp = DecIntToHexStr(uiAddr);
 
-                    if (is_jmp_instruction(temp_s) == true) {
-                        if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
-                            _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
-
-                            temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
-                            duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
-                            _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
-
-                            if (jmp_list.isMember(DecIntToHexStr(uiAddr - base_address)) == false) {
-                                temp_list.append(jmp_address);
-                                jmp_list[DecIntToHexStr(uiAddr - base_address)] = temp_list;
-                                string instruction = "jmp " + jmp_address;
-                                DbgAssembleAt(uiAddr, instruction.c_str());
-                                Json::Value temp_list;
-                            }
-                            else {
-                                jmp_list[DecIntToHexStr(uiAddr - base_address)].append(jmp_address);
-                            }
-
-                            DbgCmdExecDirect("StepInto"); // 让程序单步运行
-                        }
-                        else {
+                    int v1 = 0;
+                    for (int i = 0; i <= 20; i++) {
+                        BASIC_INSTRUCTION_INFO basicinfo_;
+                        DbgDisasmFastAt(uiAddr + i, &basicinfo_);
+                        if (is_jmp_instruction(basicinfo_.instruction)) {
+                            string temp_command = "bp " + DecIntToHexStr(uiAddr + i);
+                            v1 = i;
+                            DbgCmdExecDirect(temp_command.c_str());
+                            DbgCmdExecDirect("run");
                             break;
                         }
                     }
-                    else {
-                        if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
-                            DbgCmdExecDirect("StepInto"); // 让程序单步运行
-                        }
-                        else {
-                            break;
-                        }
-                    }
+
+                    Sleep(50);
+                    string temp_command = "bpc " + DecIntToHexStr(uiAddr + v1);
+                    DbgCmdExecDirect(temp_command.c_str());
+                    BASIC_INSTRUCTION_INFO basicinfo_;
+                    DbgDisasmFastAt(uiAddr + v1, &basicinfo_);  //获取当前指令
+                    string temp_s = basicinfo_.instruction;
+                    temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
+                    duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
+                    _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr + v1, basicinfo_.instruction); //打印日志
+                    _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
+
+                    jmp_list[temp_temp] = DecIntToHexStr(jmp_address);
+                    string instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
+                    DbgAssembleAt(uiAddr, instruction.c_str());
                 }
 
                 else {
-                    string::size_type idx_ = temp_s.find("mov");
-                    if (idx_ != string::npos) {  //指令为mov指令
-                        if (is_mov_instruction(temp_s) == true) {
-                            if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
-                                _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
+                    _plugin_logprintf(u8"0x%p\n", uiAddr);
+                    Sleep(2000);
+                    string str = basicinfo.instruction;
+                    smatch result;
+                    string::const_iterator iterStart = str.begin();
+                    string::const_iterator iterEnd = str.end();
+                    regex pattern("\\+r\\w\\w");
+                    regex_search(iterStart, iterEnd, result, pattern);
+                    string register_ = result[0];
+                    if (mov_list[DecIntToHexStr(uiAddr)] != DecIntToHexStr(DbgValFromString(register_.replace(register_.begin(), register_.begin() + 1, "").c_str()))) {
+                        string temp_string = ".+?" + register_.replace(register_.begin(), register_.begin() + 1, "") + ".+";
+                        regex pattern(temp_string);
+                        for (int i = 0; i <= 150; i++) {
+                            DbgDisasmFastAt(uiAddr - i, &basicinfo);
+                            string temp_instruction = basicinfo.instruction;
+                            if (std::regex_match(temp_instruction, pattern)) {
+                                string temp_cmp_instruction = "cmp " + register_ + ",0x" + mov_list[DecIntToHexStr(uiAddr)].asString();
+                                DbgAssembleAt(uiAddr - i + 1, temp_cmp_instruction.c_str());
+                                regex pattern_("cmp");
+                                for (int x = 1; x <= 10; x++) {
+                                    DbgDisasmFastAt(uiAddr - i + x, &basicinfo);
+                                    temp_instruction = basicinfo.instruction;
+                                    if (!std::regex_match(temp_instruction, pattern_)) {
+                                        string temp_je_instruction = "je " + jmp_list[DecIntToHexStr(uiAddr)].asString();
+                                        DbgAssembleAt(uiAddr - i + x, temp_je_instruction.c_str());
 
-                                temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 8, ""); // 获取mov指令使用的寄存器
-                                duint mov_address = DbgValFromString(temp_s.c_str());  // 获取mov指令地址
+                                        int v1 = 0;
+                                        for (int i_ = 0; i_ <= 20; i_++) {
+                                            BASIC_INSTRUCTION_INFO basicinfo_;
+                                            DbgDisasmFastAt(uiAddr + i_, &basicinfo_);
+                                            if (is_jmp_instruction(basicinfo_.instruction)) {
+                                                string temp_command = "bp " + DecIntToHexStr(uiAddr + i_);
+                                                v1 = i_;
+                                                DbgCmdExecDirect(temp_command.c_str());
+                                                DbgCmdExecDirect("run");
+                                                break;
+                                            }
+                                        }
 
-                                if (mov_list.isMember(DecIntToHexStr(uiAddr - base_address)) == false) {
-                                    temp_list.append(mov_address);
-                                    mov_list[DecIntToHexStr(uiAddr - base_address)] = temp_list;
-                                    _plugin_logprintf(u8"[原神反混淆插件] [%s] : %s\n", uiAddr, mov_address);
-                                    Json::Value temp_list;
+                                        Sleep(50);
+                                        string temp_command = "bpc " + DecIntToHexStr(uiAddr + v1);
+                                        DbgCmdExecDirect(temp_command.c_str());
+                                        BASIC_INSTRUCTION_INFO basicinfo_;
+                                        DbgDisasmFastAt(uiAddr + v1, &basicinfo_);  //获取当前指令
+                                        string temp_s = basicinfo_.instruction;
+                                        temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // 获取jmp指令使用的寄存器
+                                        duint jmp_address = DbgValFromString(temp_s.c_str());  // 获取jmp指令跳转的地址
+                                        _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr + v1, basicinfo_.instruction); //打印日志
+                                        _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
+                                        string temp_jmp_instruction = "jmp " + jmp_address;
+                                        DbgAssembleAt(uiAddr - i + x + 7, temp_jmp_instruction.c_str());
+                                        break;
+                                    }
                                 }
-                                else {
-                                    mov_list[DecIntToHexStr(uiAddr - base_address)].append(mov_address);
-                                }
-
-                                DbgCmdExecDirect("StepInto"); // 让程序单步运行
-                            }
-                            else {
                                 break;
                             }
-                        }
-                        else {
-                            if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
-                                DbgCmdExecDirect("StepInto"); // 让程序单步运行
-                            }
-                            else {
-                                break;
-                            }
-                        }
-                    }
-                    else {
-                        if (DecIntToHexStr(uiAddr) != DecIntToHexStr(base_address + 0x158BFB)) {
-                            DbgCmdExecDirect("StepInto"); // 让程序单步运行
-                        }
-                        else {
-                            break;
                         }
                     }
                 }
+                DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                mov_status = false;
+            }
+            else {
+                DbgCmdExecDirect("StepInto"); // 让程序单步运行
+                if (DecIntToHexStr(sel.start) == DecIntToHexStr(base_address + 0x158BFB)) {
+                    pthread_exit(0);
+                    _plugin_logprintf(u8"[原神反混淆插件] 完成.");
+                    break;
+                }
             }
         }
-        _plugin_logprintf(u8"[原神反混淆插件] 完成.");
     }
 }
 
+
 bool is_mov_instruction(const std::string& instruction) {
-    //00007FFE7A635B0C | 48:8B04C1                | mov rax,qword ptr ds:[rcx+rax*8]        |
-    const std::regex pattern("mov r\\w\\w,qword ptr ds:[r\\w\\w+r\\w\\w\*8]");
-    return std::regex_match(instruction, pattern);
+    //00007FFE7A635B0C | 48:8B04C1                | mov rax, qword ptr ds:[rcx+rax*8]        |
+    const std::regex pattern("mov r\\w\\w, qword ptr ds:\\[r\\w\\w\\+r\\w\\w\\*8\\]");
+    if (std::regex_match(instruction, pattern)) {
+        return 1;
+    }
+    else {
+        const std::regex pattern("mov r\\w\\w, qword ptr ds : \\[r\\w\\w \\+ r\\w\\w\\*8\\]");
+        if (std::regex_match(instruction, pattern)) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
 }
 
 bool is_jmp_instruction(const std::string& instruction) {
