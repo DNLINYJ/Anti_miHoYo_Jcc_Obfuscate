@@ -141,7 +141,7 @@ void get_obfuscated_address_offset()
                     temp_address = uiAddr - 1;
                     for (int i = 0; i <= 20; i++) {
                         DbgDisasmFastAt(uiAddr - i, &basicinfo);
-                        if (is_mov_instruction(basicinfo.instruction)) {
+                        if (is_mov_instruction(basicinfo.instruction)) {    
                             string str = basicinfo.instruction;
                             smatch result;
                             string::const_iterator iterStart = str.begin();
@@ -165,6 +165,22 @@ void get_obfuscated_address_offset()
                 }
             }
             else if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == true) { // 当jmp地址运行过了
+
+                /*
+                00007FFE857782D8 | 2D 02210000              | sub eax,2102                            |
+                00007FFE857782DD | 0F95C1                   | setne cl                                |
+                00007FFE857782E0 | 83F1 29                  | xor ecx,29                              |
+                00007FFE857782E3 | 48:8D05 F6895A02         | lea rax,qword ptr ds:[7FFE87D20CE0]     |
+                00007FFE857782EA | 48:8B04C8                | mov rax,qword ptr ds:[rax+rcx*8]        |
+                00007FFE857782EE | 48:05 8D39FFFF           | add rax,FFFFFFFFFFFF398D                |
+                00007FFE857782F4 | 8BB5 B0000000            | mov esi,dword ptr ss:[rbp+B0]           |
+                00007FFE857782FA | 41:89F6                  | mov r14d,esi                            |
+                00007FFE857782FD | 48:8BBD A8000000         | mov rdi,qword ptr ss:[rbp+A8]           |
+                00007FFE85778304 | 8B9D A0000000            | mov ebx,dword ptr ss:[rbp+A0]           |
+                00007FFE8577830A | 48:8B75 10               | mov rsi,qword ptr ss:[rbp+10]           |
+                00007FFE8577830E | FFE0                     | jmp rax                                 |
+                */
+
                 if (DecIntToHexStr(uiAddr).find("jmp") != string::npos){
                     Sleep(10000);
                     duint jmp_address = DbgValFromString(jmp_list[DecIntToHexStr(uiAddr)][0].asCString());  // 获取jmp指令跳转的地址
@@ -172,56 +188,110 @@ void get_obfuscated_address_offset()
 
                     duint lea_instruction_start_address = 0;
                     duint lea_instruction_end_address = 0;
-                    duint add_instruction_address = 0;
+
+                    duint cmp_instruction_start_address = 0;
+                    duint cmp_instruction_end_address = 0;
+
+                    duint je_instruction_start_address = 0;
+                    duint je_instruction_end_address = 0;
+
+                    duint jmp_instruction_start_address = 0;
+                    duint jmp_instruction_end_address = 0;
+
                     if (jmp_list[DecIntToHexStr(uiAddr)][1].asString() != DecIntToHexStr(jmp_address)) { // 当jmp地址不一样
 
-                        for (int i = 0; i <= 50; i++) { // 向上搜索lea指令地址
+                        string normal_instruction[20];
+                        DbgDisasmFastAt(uiAddr - 1, &basicinfo);
+                        if (is_add_instruction(basicinfo.instruction) == false) {
+                            _plugin_logprintf(u8"[原神反汇编插件] jmp指令前有正常指令，正在保存");
+                            int a = 0;
+;                            for (int i = 0; i <= 60; i++) {
+                                DbgDisasmFastAt(uiAddr - 1 - i, &basicinfo);
+                                if (is_add_instruction(basicinfo.instruction) == false) {
+                                    string temp_string = basicinfo.instruction;
+                                    if (a == 0) {
+                                        normal_instruction[a] = temp_string;
+                                        a++;
+                                    }
+                                    if (normal_instruction[a - 1].find(temp_string) == string::npos) { // 若正常指令未出现过
+                                        normal_instruction[a] = temp_string;
+                                        a++;
+                                    }
+                                }
+                                else {
+                                    break;
+                                }
+                            }
+                        }
+
+                        for (int i = 0; i <= 50; i++) { // 向上搜索lea指令开始地址
                             DbgDisasmFastAt(uiAddr - i, &basicinfo);
                             string temp_string = basicinfo.instruction;
+                            string temp_lea_instruction;
                             if (temp_string.find("lea") != string::npos) {
                                 if (lea_instruction_end_address == 0) {
                                     lea_instruction_end_address = uiAddr - i;
+                                    temp_lea_instruction = temp_string;
                                 }
                                 else {
-                                    if (temp_string.find("lea") == string::npos) {
+                                    if (temp_lea_instruction != temp_string) {
                                         lea_instruction_start_address = uiAddr - i + 1;
+                                        break;
                                     }
                                 }
-                            }
-                        }
-
-                        DbgDisasmFastAt(uiAddr - 6, &basicinfo);
-                        string temp_string = basicinfo.instruction;
-                        if (temp_string.find("add") == string::npos) {
-                            _plugin_logprintf(u8"[原神反混淆插件] jmp指令前有正常指令，正在保存");
-                            string normal_instruction[5];
-                            int a = 0;
-                            for (int i = 0; i <= 50; i++) {
-                                DbgDisasmFastAt(uiAddr - 6 - i, &basicinfo);
-                                string temp_string = basicinfo.instruction;
-                                if (normal_instruction[a].find(temp_string) == string::npos) { // 若正常指令未出现过
-                                    normal_instruction[a] = temp_string; 
-                                    a++;
+                                if (temp_lea_instruction != temp_string) {
+                                    lea_instruction_start_address = uiAddr - i + 1;
+                                    break;
                                 }
-                                else if ()
                             }
                         }
 
+                        duint instruction_start_address = 0;
+                        duint normal_instruction_start_address = lea_instruction_start_address;
 
+                        if (normal_instruction[0].empty() == false) { // jmp指令前存在正常指令
+                            for (int i = 0; i <= 20; i++) {
+                                if (normal_instruction[i].empty() == false) {
+                                    DbgAssembleAt(normal_instruction_start_address, normal_instruction[i].c_str());
+                                    DbgDisasmFastAt(normal_instruction_start_address, &basicinfo);
+                                    normal_instruction_start_address = normal_instruction_start_address + basicinfo.size + 1;
+                                }
+                                else {
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (normal_instruction_start_address != lea_instruction_start_address) {
+                            instruction_start_address = normal_instruction_start_address;
+                        }
+                        else {
+                            instruction_start_address = lea_instruction_start_address;
+                        }
+                        
                         string temp_cmp_instruction = "cmp " + mov_list[DecIntToHexStr(uiAddr)][0].asString() + ", 0x" + mov_list[DecIntToHexStr(uiAddr)][1].asString();
                         string temp_je_instruction = "je 0x" + jmp_list[DecIntToHexStr(uiAddr)][1].asString();
                         string temp_jmp_instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
 
-                        DbgDisasmFastAt(lea_instruction_address, &basicinfo);
-                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", lea_instruction_address, basicinfo.instruction, temp_cmp_instruction.c_str());
-                        DbgDisasmFastAt(mov_instruction_address, &basicinfo);
-                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", mov_instruction_address, basicinfo.instruction, temp_je_instruction.c_str());
-                        DbgDisasmFastAt(add_instruction_address, &basicinfo);
-                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", add_instruction_address, basicinfo.instruction, temp_jmp_instruction.c_str());
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_cmp_instruction.c_str());
+                        DbgAssembleAt(instruction_start_address, temp_cmp_instruction.c_str());
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
 
-                        DbgAssembleAt(lea_instruction_address, temp_cmp_instruction.c_str());
-                        DbgAssembleAt(mov_instruction_address, temp_je_instruction.c_str());
-                        DbgAssembleAt(add_instruction_address, temp_jmp_instruction.c_str());
+
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_je_instruction.c_str());
+                        DbgAssembleAt(instruction_start_address, temp_je_instruction.c_str());
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
+                        
+                        
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_jmp_instruction.c_str());
+                        DbgAssembleAt(instruction_start_address, temp_jmp_instruction.c_str());
+                        DbgDisasmFastAt(instruction_start_address, &basicinfo);
+                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
 
                         DbgCmdExecDirect("StepInto");
                     }
@@ -256,6 +326,16 @@ bool is_mov_instruction(const std::string& instruction) {
             return 0;
         }
     }
+}
+
+bool is_add_instruction(const std::string& instruction) {
+    const std::regex pattern("add r\\w\\w,FFFFFFFF\\w\\w\\w\\w\\w\\w\\w\\w");
+    return std::regex_match(instruction, pattern);
+}
+
+bool is_lea_instruction(const std::string& instruction) {
+    const std::regex pattern("lea r\\w\\w,qword ptr ds:\\[\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\]");
+    return std::regex_match(instruction, pattern);
 }
 
 bool is_jmp_instruction(const std::string& instruction) {
