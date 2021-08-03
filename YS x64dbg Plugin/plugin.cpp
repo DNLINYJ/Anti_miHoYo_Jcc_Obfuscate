@@ -133,8 +133,9 @@ void get_obfuscated_address_offset()
                         _plugin_logprintf(u8"[原神反混淆插件] 在jmp指令地址 0x%p 有有用代码在Jmp指令之前！建议自动处理后手动处理！");
                     }
 
+                    duint temp_address = uiAddr - 1;
                     for (int i = 0; i <= 20; i++) {
-                        DbgDisasmFastAt(uiAddr - i, &basicinfo);
+                        DbgDisasmFastAt(temp_address, &basicinfo);
                         if (is_mov_instruction(basicinfo.instruction)) {    
                             string str = basicinfo.instruction;
                             smatch result;
@@ -150,7 +151,11 @@ void get_obfuscated_address_offset()
                             temp_list.clear();
                             break;
                         }
+                        else {
+                            temp_address = temp_address - basicinfo.size;
+                        }
                     }
+
                     DbgCmdExecDirect("StepInto");
                 }
             }
@@ -179,24 +184,16 @@ void get_obfuscated_address_offset()
                     duint lea_instruction_start_address = 0;
                     duint lea_instruction_end_address = 0;
 
-                    duint cmp_instruction_start_address = 0;
-                    duint cmp_instruction_end_address = 0;
-
-                    duint je_instruction_start_address = 0;
-                    duint je_instruction_end_address = 0;
-
-                    duint jmp_instruction_start_address = 0;
-                    duint jmp_instruction_end_address = 0;
-
                     if (jmp_list[DecIntToHexStr(uiAddr)][1].asString() != DecIntToHexStr(jmp_address)) { // 当jmp地址不一样
 
                         string normal_instruction[20];
-                        DbgDisasmFastAt(uiAddr - 1, &basicinfo);
+                        duint temp_address = uiAddr - 1;
+                        DbgDisasmFastAt(temp_address, &basicinfo);
                         if (is_add_instruction(basicinfo.instruction) == false) {
                             _plugin_logprintf(u8"[原神反汇编插件] jmp指令前有正常指令，正在保存");
                             int a = 0;
-;                            for (int i = 0; i <= 60; i++) {
-                                DbgDisasmFastAt(uiAddr - 1 - i, &basicinfo);
+                            for (int i = 0; i <= 20; i++) {
+                                DbgDisasmFastAt(temp_address, &basicinfo);
                                 if (is_add_instruction(basicinfo.instruction) == false) {
                                     string temp_string = basicinfo.instruction;
                                     if (a == 0) {
@@ -207,6 +204,7 @@ void get_obfuscated_address_offset()
                                         normal_instruction[a] = temp_string;
                                         a++;
                                     }
+                                    temp_address = temp_address - basicinfo.size; // 指向上一条指令的结束地址
                                 }
                                 else {
                                     break;
@@ -214,25 +212,16 @@ void get_obfuscated_address_offset()
                             }
                         }
 
-                        for (int i = 0; i <= 50; i++) { // 向上搜索lea指令开始地址
-                            DbgDisasmFastAt(uiAddr - i, &basicinfo);
+                        duint temp_address = uiAddr - 1;
+                        for (int i = 0; i <= 20; i++) { // 向上搜索lea指令开始地址
+                            DbgDisasmFastAt(temp_address, &basicinfo);
                             string temp_string = basicinfo.instruction;
-                            string temp_lea_instruction;
-                            if (temp_string.find("lea") != string::npos) {
-                                if (lea_instruction_end_address == 0) {
-                                    lea_instruction_end_address = uiAddr - i;
-                                    temp_lea_instruction = temp_string;
-                                }
-                                else {
-                                    if (temp_lea_instruction != temp_string) {
-                                        lea_instruction_start_address = uiAddr - i + 1;
-                                        break;
-                                    }
-                                }
-                                if (temp_lea_instruction != temp_string) {
-                                    lea_instruction_start_address = uiAddr - i + 1;
-                                    break;
-                                }
+
+                            if (is_lea_instruction(temp_string) == true) {
+                                lea_instruction_start_address = temp_address - basicinfo.size + 1;
+                            }
+                            else {
+                                temp_address = temp_address - basicinfo.size;
                             }
                         }
 
@@ -244,7 +233,7 @@ void get_obfuscated_address_offset()
                                 if (normal_instruction[i].empty() == false) {
                                     DbgAssembleAt(normal_instruction_start_address, normal_instruction[i].c_str());
                                     DbgDisasmFastAt(normal_instruction_start_address, &basicinfo);
-                                    normal_instruction_start_address = normal_instruction_start_address + basicinfo.size + 1;
+                                    normal_instruction_start_address = normal_instruction_start_address + basicinfo.size; // 指向下一条指令的开始地址
                                 }
                                 else {
                                     break;
@@ -252,7 +241,7 @@ void get_obfuscated_address_offset()
                             }
                         }
 
-                        if (normal_instruction_start_address != lea_instruction_start_address) {
+                        if (normal_instruction_start_address != lea_instruction_start_address) { // 若已经修正正常指令
                             instruction_start_address = normal_instruction_start_address;
                         }
                         else {
@@ -267,21 +256,21 @@ void get_obfuscated_address_offset()
                         _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_cmp_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_cmp_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
+                        instruction_start_address = instruction_start_address + basicinfo.size; // 指向下一条指令的开始地址
 
 
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
                         _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_je_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_je_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
+                        instruction_start_address = instruction_start_address + basicinfo.size; // 指向下一条指令的开始地址
                         
                         
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
                         _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", instruction_start_address, basicinfo.instruction, temp_jmp_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_jmp_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size + 1;
+                        instruction_start_address = instruction_start_address + basicinfo.size; // 指向下一条指令的开始地址
 
                         DbgCmdExecDirect("StepInto");
                     }

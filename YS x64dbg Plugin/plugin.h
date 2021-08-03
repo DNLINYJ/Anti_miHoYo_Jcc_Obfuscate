@@ -14,4 +14,6 @@ void pluginSetup();
 std::string DecIntToHexStr(long long num);
 void get_obfuscated_address_offset();
 bool is_mov_instruction(const std::string& instruction);
+bool is_add_instruction(const std::string& instruction);
+bool is_lea_instruction(const std::string& instruction);
 bool is_jmp_instruction(const std::string& instruction);
