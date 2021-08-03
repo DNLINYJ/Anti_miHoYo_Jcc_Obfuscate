@@ -212,7 +212,7 @@ void get_obfuscated_address_offset()
                             }
                         }
 
-                        duint temp_address = uiAddr - 1;
+                        temp_address = uiAddr - 1;
                         for (int i = 0; i <= 20; i++) { // 向上搜索lea指令开始地址
                             DbgDisasmFastAt(temp_address, &basicinfo);
                             string temp_string = basicinfo.instruction;
