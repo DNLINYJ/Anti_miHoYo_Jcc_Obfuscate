@@ -118,14 +118,19 @@ void get_obfuscated_address_offset()
                     _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
                     _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
+                    DbgDisasmFastAt(uiAddr - 1, &basicinfo);
+                    duint temp_address = uiAddr - basicinfo.size;
+
                     temp_list.append(temp_s);
                     temp_list.append(DecIntToHexStr(jmp_address));
-                    jmp_list[DecIntToHexStr(uiAddr)] = temp_list;
+                    jmp_list[DecIntToHexStr(temp_address)] = temp_list;
                     temp_list.clear();
 
                     string instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
-                    _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", uiAddr, basicinfo.instruction, instruction.c_str());
-                    DbgAssembleAt(uiAddr, instruction.c_str());
+                    _plugin_logprintf(u8"0x%p", uiAddr);
+                    _plugin_logprintf(u8"0x%p", temp_address);
+                    _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", temp_address, basicinfo.instruction, instruction.c_str());
+                    DbgAssembleAt(temp_address, instruction.c_str());
 
                     DbgDisasmFastAt(uiAddr - 1, &basicinfo);
                     string temp_string = basicinfo.instruction;
@@ -133,7 +138,7 @@ void get_obfuscated_address_offset()
                         _plugin_logprintf(u8"[原神反混淆插件] 在jmp指令地址 0x%p 有有用代码在Jmp指令之前！建议自动处理后手动处理！");
                     }
 
-                    duint temp_address = uiAddr - 1;
+                    temp_address = uiAddr - 1;
                     for (int i = 0; i <= 20; i++) {
                         DbgDisasmFastAt(temp_address, &basicinfo);
                         if (is_mov_instruction(basicinfo.instruction)) {    
