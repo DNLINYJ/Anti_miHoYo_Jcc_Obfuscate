@@ -118,8 +118,7 @@ void get_obfuscated_address_offset()
                     _plugin_logprintf(u8"[原神反混淆插件] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //打印日志
                     _plugin_logprintf(u8"[原神反混淆插件] JMP指令跳转的地址 : 0x%p\n", jmp_address); //打印日志
 
-                    DbgDisasmFastAt(uiAddr - 1, &basicinfo);
-                    duint temp_address = uiAddr - basicinfo.size;
+                    duint temp_address = uiAddr - 0x7;
 
                     temp_list.append(temp_s);
                     temp_list.append(DecIntToHexStr(jmp_address));
@@ -127,12 +126,10 @@ void get_obfuscated_address_offset()
                     temp_list.clear();
 
                     string instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
-                    _plugin_logprintf(u8"0x%p", uiAddr);
-                    _plugin_logprintf(u8"0x%p", temp_address);
                     _plugin_logprintf(u8"[原神反混淆插件] 将地址 0x%p 的指令 %s 改为 %s\n", temp_address, basicinfo.instruction, instruction.c_str());
                     DbgAssembleAt(temp_address, instruction.c_str());
 
-                    DbgDisasmFastAt(uiAddr - 1, &basicinfo);
+                    DbgDisasmFastAt(uiAddr - 7, &basicinfo);
                     string temp_string = basicinfo.instruction;
                     if (temp_string.find("add") != string::npos) {
                         _plugin_logprintf(u8"[原神反混淆插件] 在jmp指令地址 0x%p 有有用代码在Jmp指令之前！建议自动处理后手动处理！");
@@ -197,10 +194,14 @@ void get_obfuscated_address_offset()
                         if (is_add_instruction(basicinfo.instruction) == false) {
                             _plugin_logprintf(u8"[原神反汇编插件] jmp指令前有正常指令，正在保存");
                             int a = 0;
-                            for (int i = 0; i <= 20; i++) {
+                            for (int i = 0; i <= 100; i++) {
                                 DbgDisasmFastAt(temp_address, &basicinfo);
+                                string temp_string = basicinfo.instruction;
+                                if (basicinfo.size == 1 || temp_string == "???") { // 识别不到正常指令
+                                    temp_address--;
+                                    continue;
+                                }
                                 if (is_add_instruction(basicinfo.instruction) == false) {
-                                    string temp_string = basicinfo.instruction;
                                     if (a == 0) {
                                         normal_instruction[a] = temp_string;
                                         a++;
@@ -218,12 +219,16 @@ void get_obfuscated_address_offset()
                         }
 
                         temp_address = uiAddr - 1;
-                        for (int i = 0; i <= 20; i++) { // 向上搜索lea指令开始地址
+                        for (int i = 0; i <= 100; i++) { // 向上搜索lea指令开始地址
                             DbgDisasmFastAt(temp_address, &basicinfo);
                             string temp_string = basicinfo.instruction;
 
                             if (is_lea_instruction(temp_string) == true) {
                                 lea_instruction_start_address = temp_address - basicinfo.size + 1;
+                                break;
+                            }
+                            else if (basicinfo.size == 1 || temp_string == "???") { // 识别不到正常指令
+                                temp_address = temp_address - basicinfo.size;
                             }
                             else {
                                 temp_address = temp_address - basicinfo.size;
