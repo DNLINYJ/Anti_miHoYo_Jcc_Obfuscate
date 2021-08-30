@@ -300,38 +300,6 @@ void get_obfuscated_address_offset()
 }
 
 
-bool is_mov_instruction(const std::string& instruction) {
-    //00007FFE7A635B0C | 48:8B04C1                | mov rax, qword ptr ds:[rcx+rax*8]        |
-    const std::regex pattern("mov r\\w\\w, qword ptr ds:\\[r\\w\\w\\+r\\w\\w\\*8\\]");
-    if (std::regex_match(instruction, pattern)) {
-        return 1;
-    }
-    else {
-        const std::regex pattern("mov r\\w\\w, qword ptr ds : \\[r\\w\\w \\+ r\\w\\w\\*8\\]");
-        if (std::regex_match(instruction, pattern)) {
-            return 1;
-        }
-        else {
-            return 0;
-        }
-    }
-}
-
-bool is_add_instruction(const std::string& instruction) {
-    const std::regex pattern("add r\\w\\w,FFFFFFFF\\w\\w\\w\\w\\w\\w\\w\\w");
-    return std::regex_match(instruction, pattern);
-}
-
-bool is_lea_instruction(const std::string& instruction) {
-    const std::regex pattern("lea r\\w\\w,qword ptr ds:\\[\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\w\\]");
-    return std::regex_match(instruction, pattern);
-}
-
-bool is_jmp_instruction(const std::string& instruction) {
-    const std::regex pattern("jmp r\\w\\w");
-    return std::regex_match(instruction, pattern);
-}
-
 // 将10进制字符串转为16进制字符串 来源：https://blog.csdn.net/u014602230/article/details/52752683/
 string DecIntToHexStr(long long num)
 {
