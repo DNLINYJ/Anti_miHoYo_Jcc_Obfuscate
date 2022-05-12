@@ -195,12 +195,12 @@ void get_obfuscated_address_offset()
                             _plugin_logprintf(u8"[原神反汇编插件] jmp指令前有正常指令，正在保存");
                             int a = 0;
                             for (int i = 0; i <= 100; i++) {
-                                DbgDisasmFastAt(temp_address, &basicinfo);
+                                // 获取上一条指令的开始地址
+                                string x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
+                                DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
+                                temp_address = DbgValFromString(x64dbg_instruction.c_str());
+
                                 string temp_string = basicinfo.instruction;
-                                if (basicinfo.size == 1 || temp_string == "???") { // 识别不到正常指令
-                                    temp_address--;
-                                    continue;
-                                }
                                 if (is_add_instruction(basicinfo.instruction) == false) {
                                     if (a == 0) {
                                         normal_instruction[a] = temp_string;
@@ -210,7 +210,6 @@ void get_obfuscated_address_offset()
                                         normal_instruction[a] = temp_string;
                                         a++;
                                     }
-                                    temp_address = temp_address - basicinfo.size; // 指向上一条指令的结束地址
                                 }
                                 else {
                                     break;
