@@ -14,28 +14,28 @@ enum
 
 struct datas
 {
-    string address; // Ìø×ªÖ¸ÁîËùÔÚµÄµØÖ·
-    duint offset; // Ìø×ªÖ¸ÁîËùÔÚµÄµØÖ·Æ«ÒÆÁ¿
-    long long jmp_address; // Ìø×ªÖ¸ÁîÒªÌø×ªµÄµØÖ·
+    string address; // è·³è½¬æŒ‡ä»¤æ‰€åœ¨çš„åœ°å€
+    duint offset; // è·³è½¬æŒ‡ä»¤æ‰€åœ¨çš„åœ°å€åç§»é‡
+    long long jmp_address; // è·³è½¬æŒ‡ä»¤è¦è·³è½¬çš„åœ°å€
 };
 
-//Initialize your plugin data here. ÔÚ´Ë´¦³õÊ¼»¯ÄúµÄ²å¼şÊı¾İ¡£
+//Initialize your plugin data here. åœ¨æ­¤å¤„åˆå§‹åŒ–æ‚¨çš„æ’ä»¶æ•°æ®ã€‚
 bool pluginInit(PLUG_INITSTRUCT* initStruct)
 {
     return true; //Return false to cancel loading the plugin.
 }
 
-//Deinitialize your plugin data here. ÔÚ´Ë´¦È¡Ïû³õÊ¼»¯ÄúµÄ²å¼şÊı¾İ¡£
+//Deinitialize your plugin data here. åœ¨æ­¤å¤„å–æ¶ˆåˆå§‹åŒ–æ‚¨çš„æ’ä»¶æ•°æ®ã€‚
 bool pluginStop()
 {
     return true;
 }
 
-//Do GUI/Menu related things here. ÔÚÕâÀï×ö GUI/Menu Ïà¹ØµÄÊÂÇé¡£
+//Do GUI/Menu related things here. åœ¨è¿™é‡Œåš GUI/Menu ç›¸å…³çš„äº‹æƒ…ã€‚
 void pluginSetup()
 {
-	//Íù²å¼ş²Ëµ¥ÀïÃæÌí¼ÓÈı¸ö²Ëµ¥Ïî
-    _plugin_menuaddentry(hMenu, MENU_SEE, u8"¿ªÊ¼¼àÊÓStartDecryptÖĞµÄJMPÖ¸Áî¶Ïµã");
+	//å¾€æ’ä»¶èœå•é‡Œé¢æ·»åŠ ä¸‰ä¸ªèœå•é¡¹
+    _plugin_menuaddentry(hMenu, MENU_SEE, u8"å¼€å§‹ç›‘è§†StartDecryptä¸­çš„JMPæŒ‡ä»¤æ–­ç‚¹");
 }
 
 PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
@@ -45,13 +45,13 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
     case MENU_SEE:
         if (!DbgIsDebugging())
         {
-            GuiAddLogMessage(u8"[Ô­Éñ·´»ìÏı²å¼ş] ÄãĞèÒª´¦ÓÚµ÷ÊÔ×´Ì¬²ÅÄÜÊ¹ÓÃ´Ë¹¦ÄÜ!\n");
+            GuiAddLogMessage(u8"[åŸç¥åæ··æ·†æ’ä»¶] ä½ éœ€è¦å¤„äºè°ƒè¯•çŠ¶æ€æ‰èƒ½ä½¿ç”¨æ­¤åŠŸèƒ½!\n");
             break;
         }
-        MessageBoxA(hwndDlg, "[Ô­Éñ·´»ìÏı²å¼ş] ¿ªÊ¼¼àÊÓStartDecryptÖĞµÄJMPÖ¸Áî¶Ïµã.", PLUGIN_NAME, MB_ICONINFORMATION);
-        GuiAddLogMessage(u8"[Ô­Éñ·´»ìÏı²å¼ş] ¿ªÊ¼¼àÊÓStartDecryptÖĞµÄJMPÖ¸Áî¶Ïµã.\n");
-        pthread_t tids_start; // ¶¨ÒåÏß³ÌµÄ id ±äÁ¿
-        pthread_create(&tids_start, NULL, (void* (__cdecl*)(void*))get_obfuscated_address_offset, NULL); // Ê¹ÓÃ¶àÏß³ÌÆô¶¯¼àÊÓ½ø³Ì,±ÜÃâX64DBG¿¨ËÀ£¨¼ÙÎŞÏìÓ¦£©
+        MessageBoxA(hwndDlg, "[åŸç¥åæ··æ·†æ’ä»¶] å¼€å§‹ç›‘è§†StartDecryptä¸­çš„JMPæŒ‡ä»¤æ–­ç‚¹.", PLUGIN_NAME, MB_ICONINFORMATION);
+        GuiAddLogMessage(u8"[åŸç¥åæ··æ·†æ’ä»¶] å¼€å§‹ç›‘è§†StartDecryptä¸­çš„JMPæŒ‡ä»¤æ–­ç‚¹.\n");
+        pthread_t tids_start; // å®šä¹‰çº¿ç¨‹çš„ id å˜é‡
+        pthread_create(&tids_start, NULL, (void* (__cdecl*)(void*))get_obfuscated_address_offset, NULL); // ä½¿ç”¨å¤šçº¿ç¨‹å¯åŠ¨ç›‘è§†è¿›ç¨‹,é¿å…X64DBGå¡æ­»ï¼ˆå‡æ— å“åº”ï¼‰
         //pthread_join(tids_start, NULL);
         break;
     default:
@@ -59,23 +59,23 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
     }
 }
 
-// º¯ÊıÓÃ´¦DOC : https://gitee.com/suxuss/DELPHI-x96dbg-Plugins-SDK/blob/master/bridgemain.pas
-// ²¿·Öº¯ÊıÓÃ·¨À´Ô´£ºhttp://www.xeronichs.com/2016/11/study-x64dbg-plugin-03.html
+// å‡½æ•°ç”¨å¤„DOC : https://gitee.com/suxuss/DELPHI-x96dbg-Plugins-SDK/blob/master/bridgemain.pas
+// éƒ¨åˆ†å‡½æ•°ç”¨æ³•æ¥æºï¼šhttp://www.xeronichs.com/2016/11/study-x64dbg-plugin-03.html
 
 void get_obfuscated_address_offset()
 {
     if (!DbgIsDebugging())
     {
-        GuiAddLogMessage(u8"[Ô­Éñ·´»ìÏı²å¼ş] ÄãĞèÒª´¦ÓÚµ÷ÊÔ×´Ì¬²ÅÄÜÊ¹ÓÃ´Ë¹¦ÄÜ!\n");
+        GuiAddLogMessage(u8"[åŸç¥åæ··æ·†æ’ä»¶] ä½ éœ€è¦å¤„äºè°ƒè¯•çŠ¶æ€æ‰èƒ½ä½¿ç”¨æ­¤åŠŸèƒ½!\n");
     }
 
     else
     {
         duint first_address = 0;
         duint uiAddr = 0;
-        duint base_address = DbgModBaseFromName("unityplayer.dll"); //Ä£¿éÃû×ª»ùÖ·
-        string init_command_1 = "bp " + DecIntToHexStr(base_address + 0x158210); //StartDecryptÈë¿Ú¶Ïµã
-        string init_command_2 = "bp " + DecIntToHexStr(base_address + 0x158BFB); //StartDecrypt³ö¿Ú¶Ïµã
+        duint base_address = DbgModBaseFromName("unityplayer.dll"); //æ¨¡å—åè½¬åŸºå€
+        string init_command_1 = "bp " + DecIntToHexStr(base_address + 0x158210); //StartDecryptå…¥å£æ–­ç‚¹
+        string init_command_2 = "bp " + DecIntToHexStr(base_address + 0x158BFB); //StartDecryptå‡ºå£æ–­ç‚¹
         DbgCmdExecDirect(init_command_1.c_str());
         DbgCmdExecDirect(init_command_2.c_str());
         Json::Value jmp_list;
@@ -85,16 +85,16 @@ void get_obfuscated_address_offset()
         while (true) {
             if (!DbgIsDebugging())
             {
-                GuiAddLogMessage(u8"[Ô­Éñ·´»ìÏı²å¼ş] ÄãĞèÒª´¦ÓÚµ÷ÊÔ×´Ì¬²ÅÄÜÊ¹ÓÃ´Ë¹¦ÄÜ!\n");
+                GuiAddLogMessage(u8"[åŸç¥åæ··æ·†æ’ä»¶] ä½ éœ€è¦å¤„äºè°ƒè¯•çŠ¶æ€æ‰èƒ½ä½¿ç”¨æ­¤åŠŸèƒ½!\n");
                 break;
             }
             Sleep(10);
             BASIC_INSTRUCTION_INFO basicinfo;
             SELECTIONDATA sel;
-            GuiSelectionGet(GUI_DISASSEMBLY, &sel); //»ñÈ¡Ö¸¶¨ GUI ÊÓÍ¼µÄµ±Ç°Ñ¡¶¨ĞĞ£¨»ò¶àĞĞ£©²¢½«ĞÅÏ¢×÷ÎªÆğÊ¼µØÖ·ºÍ½áÊøµØÖ··µ»Øµ½ SELECTIONDATA ±äÁ¿ÖĞ¡£
-            uiAddr = sel.start; //»ñÈ¡µ±Ç°µØÖ·
+            GuiSelectionGet(GUI_DISASSEMBLY, &sel); //è·å–æŒ‡å®š GUI è§†å›¾çš„å½“å‰é€‰å®šè¡Œï¼ˆæˆ–å¤šè¡Œï¼‰å¹¶å°†ä¿¡æ¯ä½œä¸ºèµ·å§‹åœ°å€å’Œç»“æŸåœ°å€è¿”å›åˆ° SELECTIONDATA å˜é‡ä¸­ã€‚
+            uiAddr = sel.start; //è·å–å½“å‰åœ°å€
 
-            DbgDisasmFastAt(uiAddr, &basicinfo);  //»ñÈ¡µ±Ç°Ö¸Áî
+            DbgDisasmFastAt(uiAddr, &basicinfo);  //è·å–å½“å‰æŒ‡ä»¤
 
             if (DecIntToHexStr(sel.start) == DecIntToHexStr(base_address + 0x158BFB)) {
                 break;
@@ -113,10 +113,10 @@ void get_obfuscated_address_offset()
             if (jmp_status) {
                 if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == false) {
                     string temp_s = basicinfo.instruction;
-                    temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // »ñÈ¡jmpÖ¸ÁîÊ¹ÓÃµÄ¼Ä´æÆ÷
-                    duint jmp_address = DbgValFromString(temp_s.c_str());  // »ñÈ¡jmpÖ¸ÁîÌø×ªµÄµØÖ·
-                    _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //´òÓ¡ÈÕÖ¾
-                    _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] JMPÖ¸ÁîÌø×ªµÄµØÖ· : 0x%p\n", jmp_address); //´òÓ¡ÈÕÖ¾
+                    temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 3, ""); // è·å–jmpæŒ‡ä»¤ä½¿ç”¨çš„å¯„å­˜å™¨
+                    duint jmp_address = DbgValFromString(temp_s.c_str());  // è·å–jmpæŒ‡ä»¤è·³è½¬çš„åœ°å€
+                    _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] [0x%p] : %s\n", uiAddr, basicinfo.instruction); //æ‰“å°æ—¥å¿—
+                    _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] JMPæŒ‡ä»¤è·³è½¬çš„åœ°å€ : 0x%p\n", jmp_address); //æ‰“å°æ—¥å¿—
 
                     duint temp_address = uiAddr - 0x7;
 
@@ -126,13 +126,13 @@ void get_obfuscated_address_offset()
                     temp_list.clear();
 
                     string instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
-                    _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] ½«µØÖ· 0x%p µÄÖ¸Áî %s ¸ÄÎª %s\n", temp_address, basicinfo.instruction, instruction.c_str());
+                    _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] å°†åœ°å€ 0x%p çš„æŒ‡ä»¤ %s æ”¹ä¸º %s\n", temp_address, basicinfo.instruction, instruction.c_str());
                     DbgAssembleAt(temp_address, instruction.c_str());
 
                     DbgDisasmFastAt(uiAddr - 7, &basicinfo);
                     string temp_string = basicinfo.instruction;
                     if (temp_string.find("add") != string::npos) {
-                        _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] ÔÚjmpÖ¸ÁîµØÖ· 0x%p ÓĞÓĞÓÃ´úÂëÔÚJmpÖ¸ÁîÖ®Ç°£¡½¨Òé×Ô¶¯´¦ÀíºóÊÖ¶¯´¦Àí£¡");
+                        _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] åœ¨jmpæŒ‡ä»¤åœ°å€ 0x%p æœ‰æœ‰ç”¨ä»£ç åœ¨JmpæŒ‡ä»¤ä¹‹å‰ï¼å»ºè®®è‡ªåŠ¨å¤„ç†åæ‰‹åŠ¨å¤„ç†ï¼");
                     }
 
                     temp_address = uiAddr - 1;
@@ -161,7 +161,7 @@ void get_obfuscated_address_offset()
                     DbgCmdExecDirect("StepInto");
                 }
             }
-            else if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == true) { // µ±jmpµØÖ·ÔËĞĞ¹ıÁË
+            else if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == true) { // å½“jmpåœ°å€è¿è¡Œè¿‡äº†
 
                 /*
                 00007FFE857782D8 | 2D 02210000              | sub eax,2102                            |
@@ -180,22 +180,22 @@ void get_obfuscated_address_offset()
 
                 if (DecIntToHexStr(uiAddr).find("jmp") != string::npos){
                     Sleep(10000);
-                    duint jmp_address = DbgValFromString(jmp_list[DecIntToHexStr(uiAddr)][0].asCString());  // »ñÈ¡jmpÖ¸ÁîÌø×ªµÄµØÖ·
+                    duint jmp_address = DbgValFromString(jmp_list[DecIntToHexStr(uiAddr)][0].asCString());  // è·å–jmpæŒ‡ä»¤è·³è½¬çš„åœ°å€
                     temp_list.clear();
 
                     duint lea_instruction_start_address = 0;
                     duint lea_instruction_end_address = 0;
 
-                    if (jmp_list[DecIntToHexStr(uiAddr)][1].asString() != DecIntToHexStr(jmp_address)) { // µ±jmpµØÖ·²»Ò»Ñù
+                    if (jmp_list[DecIntToHexStr(uiAddr)][1].asString() != DecIntToHexStr(jmp_address)) { // å½“jmpåœ°å€ä¸ä¸€æ ·
 
                         string normal_instruction[20];
                         duint temp_address = uiAddr - 1;
                         DbgDisasmFastAt(temp_address, &basicinfo);
                         if (is_add_instruction(basicinfo.instruction) == false) {
-                            _plugin_logprintf(u8"[Ô­Éñ·´»ã±à²å¼ş] jmpÖ¸ÁîÇ°ÓĞÕı³£Ö¸Áî£¬ÕıÔÚ±£´æ");
+                            _plugin_logprintf(u8"[åŸç¥åæ±‡ç¼–æ’ä»¶] jmpæŒ‡ä»¤å‰æœ‰æ­£å¸¸æŒ‡ä»¤ï¼Œæ­£åœ¨ä¿å­˜");
                             int a = 0;
                             for (int i = 0; i <= 100; i++) {
-                                // »ñÈ¡ÉÏÒ»ÌõÖ¸ÁîµÄ¿ªÊ¼µØÖ·
+                                // è·å–ä¸Šä¸€æ¡æŒ‡ä»¤çš„å¼€å§‹åœ°å€
                                 string x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
                                 DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
                                 temp_address = DbgValFromString(x64dbg_instruction.c_str());
@@ -206,7 +206,7 @@ void get_obfuscated_address_offset()
                                         normal_instruction[a] = temp_string;
                                         a++;
                                     }
-                                    if (normal_instruction[a - 1].find(temp_string) == string::npos) { // ÈôÕı³£Ö¸ÁîÎ´³öÏÖ¹ı
+                                    if (normal_instruction[a - 1].find(temp_string) == string::npos) { // è‹¥æ­£å¸¸æŒ‡ä»¤æœªå‡ºç°è¿‡
                                         normal_instruction[a] = temp_string;
                                         a++;
                                     }
@@ -218,7 +218,7 @@ void get_obfuscated_address_offset()
                         }
 
                         temp_address = uiAddr - 1;
-                        for (int i = 0; i <= 100; i++) { // ÏòÉÏËÑË÷leaÖ¸Áî¿ªÊ¼µØÖ·
+                        for (int i = 0; i <= 100; i++) { // å‘ä¸Šæœç´¢leaæŒ‡ä»¤å¼€å§‹åœ°å€
                             DbgDisasmFastAt(temp_address, &basicinfo);
                             string temp_string = basicinfo.instruction;
 
@@ -226,7 +226,7 @@ void get_obfuscated_address_offset()
                                 lea_instruction_start_address = temp_address - basicinfo.size + 1;
                                 break;
                             }
-                            else if (basicinfo.size == 1 || temp_string == "???") { // Ê¶±ğ²»µ½Õı³£Ö¸Áî
+                            else if (basicinfo.size == 1 || temp_string == "???") { // è¯†åˆ«ä¸åˆ°æ­£å¸¸æŒ‡ä»¤
                                 temp_address = temp_address - basicinfo.size;
                             }
                             else {
@@ -237,12 +237,12 @@ void get_obfuscated_address_offset()
                         duint instruction_start_address = 0;
                         duint normal_instruction_start_address = lea_instruction_start_address;
 
-                        if (normal_instruction[0].empty() == false) { // jmpÖ¸ÁîÇ°´æÔÚÕı³£Ö¸Áî
+                        if (normal_instruction[0].empty() == false) { // jmpæŒ‡ä»¤å‰å­˜åœ¨æ­£å¸¸æŒ‡ä»¤
                             for (int i = 0; i <= 20; i++) {
                                 if (normal_instruction[i].empty() == false) {
                                     DbgAssembleAt(normal_instruction_start_address, normal_instruction[i].c_str());
                                     DbgDisasmFastAt(normal_instruction_start_address, &basicinfo);
-                                    normal_instruction_start_address = normal_instruction_start_address + basicinfo.size; // Ö¸ÏòÏÂÒ»ÌõÖ¸ÁîµÄ¿ªÊ¼µØÖ·
+                                    normal_instruction_start_address = normal_instruction_start_address + basicinfo.size; // æŒ‡å‘ä¸‹ä¸€æ¡æŒ‡ä»¤çš„å¼€å§‹åœ°å€
                                 }
                                 else {
                                     break;
@@ -250,7 +250,7 @@ void get_obfuscated_address_offset()
                             }
                         }
 
-                        if (normal_instruction_start_address != lea_instruction_start_address) { // ÈôÒÑ¾­ĞŞÕıÕı³£Ö¸Áî
+                        if (normal_instruction_start_address != lea_instruction_start_address) { // è‹¥å·²ç»ä¿®æ­£æ­£å¸¸æŒ‡ä»¤
                             instruction_start_address = normal_instruction_start_address;
                         }
                         else {
@@ -262,24 +262,24 @@ void get_obfuscated_address_offset()
                         string temp_jmp_instruction = "jmp 0x" + DecIntToHexStr(jmp_address);
 
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] ½«µØÖ· 0x%p µÄÖ¸Áî %s ¸ÄÎª %s\n", instruction_start_address, basicinfo.instruction, temp_cmp_instruction.c_str());
+                        _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] å°†åœ°å€ 0x%p çš„æŒ‡ä»¤ %s æ”¹ä¸º %s\n", instruction_start_address, basicinfo.instruction, temp_cmp_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_cmp_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size; // Ö¸ÏòÏÂÒ»ÌõÖ¸ÁîµÄ¿ªÊ¼µØÖ·
+                        instruction_start_address = instruction_start_address + basicinfo.size; // æŒ‡å‘ä¸‹ä¸€æ¡æŒ‡ä»¤çš„å¼€å§‹åœ°å€
 
 
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] ½«µØÖ· 0x%p µÄÖ¸Áî %s ¸ÄÎª %s\n", instruction_start_address, basicinfo.instruction, temp_je_instruction.c_str());
+                        _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] å°†åœ°å€ 0x%p çš„æŒ‡ä»¤ %s æ”¹ä¸º %s\n", instruction_start_address, basicinfo.instruction, temp_je_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_je_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size; // Ö¸ÏòÏÂÒ»ÌõÖ¸ÁîµÄ¿ªÊ¼µØÖ·
+                        instruction_start_address = instruction_start_address + basicinfo.size; // æŒ‡å‘ä¸‹ä¸€æ¡æŒ‡ä»¤çš„å¼€å§‹åœ°å€
                         
                         
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        _plugin_logprintf(u8"[Ô­Éñ·´»ìÏı²å¼ş] ½«µØÖ· 0x%p µÄÖ¸Áî %s ¸ÄÎª %s\n", instruction_start_address, basicinfo.instruction, temp_jmp_instruction.c_str());
+                        _plugin_logprintf(u8"[åŸç¥åæ··æ·†æ’ä»¶] å°†åœ°å€ 0x%p çš„æŒ‡ä»¤ %s æ”¹ä¸º %s\n", instruction_start_address, basicinfo.instruction, temp_jmp_instruction.c_str());
                         DbgAssembleAt(instruction_start_address, temp_jmp_instruction.c_str());
                         DbgDisasmFastAt(instruction_start_address, &basicinfo);
-                        instruction_start_address = instruction_start_address + basicinfo.size; // Ö¸ÏòÏÂÒ»ÌõÖ¸ÁîµÄ¿ªÊ¼µØÖ·
+                        instruction_start_address = instruction_start_address + basicinfo.size; // æŒ‡å‘ä¸‹ä¸€æ¡æŒ‡ä»¤çš„å¼€å§‹åœ°å€
 
                         DbgCmdExecDirect("StepInto");
                     }
@@ -331,7 +331,7 @@ bool is_jmp_instruction(const std::string& instruction) {
     return std::regex_match(instruction, pattern);
 }
 
-// ½«10½øÖÆ×Ö·û´®×ªÎª16½øÖÆ×Ö·û´® À´Ô´£ºhttps://blog.csdn.net/u014602230/article/details/52752683/
+// å°†10è¿›åˆ¶å­—ç¬¦ä¸²è½¬ä¸º16è¿›åˆ¶å­—ç¬¦ä¸² æ¥æºï¼šhttps://blog.csdn.net/u014602230/article/details/52752683/
 string DecIntToHexStr(long long num)
 {
     string str;
