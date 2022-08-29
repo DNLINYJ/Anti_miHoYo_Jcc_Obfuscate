@@ -233,53 +233,56 @@ void get_obfuscated_address_offset()
                     DbgCmdExecDirect("StepInto");
                 }
 
-                // 获取原先修改的jump地址
-                string x64dbg_instruction = "dis.brtrue(0x" + DecIntToHexStr(uiAddr) + ")";
-                DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
-                duint old_jump_to_address = DbgValFromString(x64dbg_instruction.c_str());
-
-                // 获取现在的jump地址
-                duint new_jump_to_address = DbgValFromString(jmp_list[DecIntToHexStr(uiAddr)][0].asCString());
-
-                // 当地址相同时 不进行操作
-                if (old_jump_to_address == new_jump_to_address) {
-                    DbgCmdExecDirect("StepInto");
-                }
-                // 当地址不相同时 进行操作
                 else {
-                    // 写入跳转指令
-                    string cmp_instruction = "cmp " + jmp_list[DecIntToHexStr(uiAddr)][2].asString() + "," + jmp_list[DecIntToHexStr(uiAddr)][3].asString();
-                    string je_instruction = "je 0x" + DecIntToHexStr(old_jump_to_address);
-                    string jmp_instruction = "jmp 0x" + DecIntToHexStr(new_jump_to_address);
-
-                    _plugin_logprintf(u8"[反米哈游CFG混淆插件] 在地址 0x%p 开始恢复跳转指令 \n", uiAddr);
-
-                    // 写入cmp指令
-                    duint temp_address = uiAddr;
-                    DbgAssembleAt(temp_address, cmp_instruction.c_str());
-
-                    // 获取下一条指令开始地址
-                    x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
+                    // 获取原先修改的jump地址
+                    string x64dbg_instruction = "dis.brtrue(0x" + DecIntToHexStr(uiAddr) + ")";
                     DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
-                    temp_address = DbgValFromString(x64dbg_instruction.c_str());
+                    duint old_jump_to_address = DbgValFromString(x64dbg_instruction.c_str());
 
-                    // 写入je指令
-                    DbgAssembleAt(temp_address, je_instruction.c_str());
+                    // 获取现在的jump地址
+                    duint new_jump_to_address = DbgValFromString(jmp_list[DecIntToHexStr(uiAddr)][0].asCString());
 
-                    // 获取下一条指令开始地址
-                    x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
-                    DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
-                    temp_address = DbgValFromString(x64dbg_instruction.c_str());
+                    // 当地址相同时 不进行操作
+                    if (old_jump_to_address == new_jump_to_address) {
+                        DbgCmdExecDirect("StepInto");
+                    }
+                    // 当地址不相同时 进行操作
+                    else {
+                        // 写入跳转指令
+                        string cmp_instruction = "cmp " + jmp_list[DecIntToHexStr(uiAddr)][2].asString() + "," + jmp_list[DecIntToHexStr(uiAddr)][3].asString();
+                        string je_instruction = "je 0x" + DecIntToHexStr(old_jump_to_address);
+                        string jmp_instruction = "jmp 0x" + DecIntToHexStr(new_jump_to_address);
 
-                    // 写入jmp指令
-                    DbgAssembleAt(temp_address, jmp_instruction.c_str());
+                        _plugin_logprintf(u8"[反米哈游CFG混淆插件] 在地址 0x%p 开始恢复跳转指令 \n", uiAddr);
 
-                    // 获取下一条指令开始地址
-                    x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
-                    DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
-                    temp_address = DbgValFromString(x64dbg_instruction.c_str());
+                        // 写入cmp指令
+                        duint temp_address = uiAddr;
+                        DbgAssembleAt(temp_address, cmp_instruction.c_str());
+
+                        // 获取下一条指令开始地址
+                        x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
+                        DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
+                        temp_address = DbgValFromString(x64dbg_instruction.c_str());
+
+                        // 写入je指令
+                        DbgAssembleAt(temp_address, je_instruction.c_str());
+
+                        // 获取下一条指令开始地址
+                        x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
+                        DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
+                        temp_address = DbgValFromString(x64dbg_instruction.c_str());
+
+                        // 写入jmp指令
+                        DbgAssembleAt(temp_address, jmp_instruction.c_str());
+
+                        // 获取下一条指令开始地址
+                        x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
+                        DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
+                        temp_address = DbgValFromString(x64dbg_instruction.c_str());
+
+                        DbgCmdExecDirect("StepInto");
+                    }
                 }
-                
             }
             else {
                 DbgCmdExecDirect("StepInto");
