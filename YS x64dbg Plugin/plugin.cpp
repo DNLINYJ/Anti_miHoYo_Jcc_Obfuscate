@@ -206,6 +206,7 @@ void get_obfuscated_address_offset()
                             }
                             jmp_list[DecIntToHexStr(temp_address)] = temp_list;
                             temp_list.clear();
+                            break;
                         }
                     }
                     DbgCmdExecDirect("StepInto");
