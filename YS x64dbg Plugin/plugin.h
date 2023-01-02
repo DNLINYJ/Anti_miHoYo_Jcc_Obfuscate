@@ -4,7 +4,7 @@
 #include <string>
 
 //plugin data
-#define PLUGIN_NAME "YS_x64dbg_Plugin"
+#define PLUGIN_NAME "Anti miHoYo Jcc Obfuscate"
 #define PLUGIN_VERSION 1
 
 //functions
