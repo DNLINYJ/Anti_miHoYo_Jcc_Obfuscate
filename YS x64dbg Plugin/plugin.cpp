@@ -103,15 +103,42 @@ void get_obfuscated_address_offset()
 		Json::Value temp_list;
 		BASIC_INSTRUCTION_INFO basicinfo;
 		SELECTIONDATA sel;
+		GuiSelectionGet(GUI_DISASSEMBLY, &sel); //获取指定 GUI 视图的当前选定行（或多行）并将信息作为起始地址和结束地址返回到 SELECTIONDATA 变量中。
+		duint ta = sel.start; //获取当前地址
+
+		while (true) {
+			string x64dbg_instruction_1 = "dis.next(0x" + DecIntToHexStr(ta) + ")";
+			DbgDisasmFastAt(DbgValFromString(x64dbg_instruction_1.c_str()), &basicinfo);
+			ta = DbgValFromString(x64dbg_instruction_1.c_str());
+
+			if (is_jmp_instruction(basicinfo.instruction)) {
+				x64dbg_instruction_1 = "bp " + DecIntToHexStr(ta);
+				DbgCmdExecDirect(x64dbg_instruction_1.c_str());
+				break;
+			}
+		}
+		DbgCmdExecDirect("run");
 
 		while (true) {
 			if (!DbgIsDebugging())
 			{
 				return;
 			}
-			Sleep(150);
+			Sleep(1000);
 			GuiSelectionGet(GUI_DISASSEMBLY, &sel); //获取指定 GUI 视图的当前选定行（或多行）并将信息作为起始地址和结束地址返回到 SELECTIONDATA 变量中。
 			uiAddr = sel.start; //获取当前地址
+			// 判断是否停止
+			duint new_add;
+			for (int i = 0; i < 10; i++) {
+				Sleep(5);
+				GuiSelectionGet(GUI_DISASSEMBLY, &sel); //获取指定 GUI 视图的当前选定行（或多行）并将信息作为起始地址和结束地址返回到 SELECTIONDATA 变量中。
+				new_add = sel.start; //获取当前地址
+			}
+
+			if (new_add != uiAddr) {
+				continue;
+			}
+
 			DbgDisasmFastAt(uiAddr, &basicinfo);  //获取当前指令
 
 			if (DecIntToHexStr(sel.start) == DecIntToHexStr(base_address + endAddressRVA)) {
@@ -127,15 +154,11 @@ void get_obfuscated_address_offset()
 			bool ret = DbgGetModuleAt(uiAddr, module_name);
 			string module_name_str = module_name;
 			//_plugin_logprintf(module_name_str.c_str());
-			if (module_name_str != "unityplayer") {
-				DbgCmdExecDirect("RunToUserCode");
-				continue;
-			}
 
 			if (is_jmp_instruction(basicinfo.instruction) && module_name_str == "unityplayer") {
-				bool flag = false;
 				unsigned char nopChar = 0x90;
-				if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == false) { // jmp地址未执行过
+				// jmp地址未执行过
+				if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == false) {
 					// 记录jump地址所在位置
 					duint jmpStartAddress = uiAddr;
 
@@ -250,10 +273,34 @@ void get_obfuscated_address_offset()
 					DbgCmdExecDirect("StepOver");
 					DbgMemWrite(jmpStartAddress, &nopChar, 1);
 					DbgMemWrite(jmpStartAddress + 1, &nopChar, 1);
-					flag = true;
+
+					GuiSelectionGet(GUI_DISASSEMBLY, &sel); //获取指定 GUI 视图的当前选定行（或多行）并将信息作为起始地址和结束地址返回到 SELECTIONDATA 变量中。
+					temp_address = sel.start; //获取当前地址
+
+					const std::regex pattern_jmp("jmp");
+					// 在下一个jmp指令打断点
+					while (true) {
+						x64dbg_instruction = "dis.next(0x" + DecIntToHexStr(temp_address) + ")";
+						DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
+						temp_address = DbgValFromString(x64dbg_instruction.c_str());
+
+						if (regex_match(basicinfo.instruction, pattern_jmp) && !is_jmp_instruction(basicinfo.instruction))
+						{
+							temp_s = basicinfo.instruction;
+							temp_s = temp_s.replace(temp_s.begin(), temp_s.begin() + 4, "");
+							temp_address = DbgValFromString(temp_s.c_str());
+							_plugin_logprintf(basicinfo.instruction);
+							continue;
+						}
+
+						if (is_jmp_instruction(basicinfo.instruction)) {
+							x64dbg_instruction = "bp " + DecIntToHexStr(temp_address);
+							DbgCmdExecDirect(x64dbg_instruction.c_str());
+							break;
+						}
+					}
+					DbgCmdExecDirect("run");
 				}
-				if (!flag)
-					DbgCmdExecDirect("StepOver");
 			}
 			else if (jmp_list.isMember(DecIntToHexStr(uiAddr)) == true && module_name_str == "unityplayer") { // 当jmp地址运行过了
 
@@ -319,17 +366,9 @@ void get_obfuscated_address_offset()
 						// 写入jmp指令
 						DbgAssembleAt(temp_address, jmp_instruction.c_str());
 
-						// 获取下一条指令开始地址
-						x64dbg_instruction = "dis.prev(0x" + DecIntToHexStr(temp_address) + ")";
-						DbgDisasmFastAt(DbgValFromString(x64dbg_instruction.c_str()), &basicinfo);
-						temp_address = DbgValFromString(x64dbg_instruction.c_str());
-
 						DbgCmdExecDirect("StepOver");
 					}
 				}
-			}
-			else {
-				DbgCmdExecDirect("StepOver");
 			}
 		}
 	}
